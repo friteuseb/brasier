@@ -16,7 +16,7 @@ const RECIPES = {
     { files: n5("footstep_concrete"), vol: 0.6, rate: 0.85 },
     { files: n5("impactPlate_light"), vol: 0.18, rate: 1.1 },
   ],
-  swing: [{ files: ["swing_0", "swing_1", "swing_2"], vol: 0.55, vary: 0.07 }],
+  swing: [{ files: ["swing_0", "swing_1", "swing_2"], vol: 0.7, vary: 0.05 }],
   hit: [
     { files: n5("impactPunch_medium"), vol: 0.65 },
     { files: n5("impactSoft_medium"), vol: 0.5, rate: 0.8 },
