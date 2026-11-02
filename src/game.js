@@ -11,7 +11,8 @@ import { Embers } from "./embers.js";
 import { Level, LEVEL1 } from "./level.js";
 import { Hero, HW, HH } from "./hero.js";
 import { Cape, drawKnight } from "./knight.js";
-import { Slime, overlaps, GOO } from "./enemies.js";
+import { KINDS, overlaps, GOO } from "./enemies.js";
+import { Merchant } from "./shop.js";
 import { drawBackdrop, drawTiles } from "./tiles.js";
 import { Skills, node } from "./skills.js";
 import { Special } from "./specials.js";
@@ -48,9 +49,10 @@ export function createGame() {
   let purse = 0; // les braises ramassées
   let streak = 0, streakT = 0; // les braises ramassées d'affilée font monter le tintement
   const toast = { text: "", t: 0 };
-  let slimes = [];
-  const spawnSlimes = () => (slimes = level.slimes.map(([x, y], i) => new Slime(x, y, i + 1)));
-  spawnSlimes();
+  let enemies = [];
+  const spawnEnemies = () => (enemies = level.foes.map(([ch, x, y], i) => new KINDS[ch](x, y, i + 1)));
+  spawnEnemies();
+  const merchants = level.merchants.map(([x, y], i) => new Merchant(x, y, i + 1));
   // les effets ponctuels en cours ; speed fait jouer un effet plus vite
   let fxs = [], projectiles = [], later = [], shieldFx = null;
   let altar = null, prev = {};
@@ -58,7 +60,7 @@ export function createGame() {
   let acc = 0, freeze = 0, shakeT = 0, shake0 = 1, amp = 0;
 
   const near = (x, y, m = 80) => x > cam.x - m && x < cam.x + W + m && y > cam.y - m && y < cam.y + H + m * 2;
-  const litFireHere = () => fires.findIndex((f) => f.lit && Math.abs(hero.x - f.x) <= 12 && Math.abs(hero.y - f.y) <= 4);
+  const merchantHere = () => merchants.find((m) => m.reach(hero));
 
   function follow(dt) {
     // la caméra regarde un peu devant le chevalier et reste dans le niveau
@@ -71,7 +73,9 @@ export function createGame() {
   }
 
   function kill(s) {
-    game.addFx(createFx(poof, { x: s.x, y: s.y, seed: 3, palette: GOO, light: 0.6 }), 1.3);
+    // le slime meurt en éclaboussure verte, les autres en nuage de leur couleur
+    const palette = s.kind === "slime" ? GOO : s.palette.slice(1);
+    game.addFx(createFx(poof, { x: s.x, y: s.kind === "slime" || s.kind === "snake" ? s.y : s.y + 10, seed: 3, palette, light: 0.6 }), 1.3);
     embers.burst(s.x, s.y - 8, s.loot, () => R.next());
     game.emit("kill", { x: s.x });
     hero.ardor = Math.min(100, hero.ardor + ARDOR_KILL);
@@ -80,7 +84,7 @@ export function createGame() {
   // un impact : { box, dmg, stop, shake, amp, push, sword, stroke, crit, once, always, sound }
   function strike(imp) {
     let touched = false;
-    for (const s of slimes) {
+    for (const s of enemies) {
       if (s.hp <= 0 || !overlaps(imp.box, s.box()) || imp.once?.has(s)) continue;
       imp.once?.add(s);
       touched = true;
@@ -115,7 +119,7 @@ export function createGame() {
       for (const f of fires) if (f.lit) k = Math.max(k, 1 - Math.hypot(f.x - hero.x, f.y - hero.y) / 140);
       return altar ? k * 0.5 : Math.max(0, k);
     },
-    get slimes() { return slimes; },
+    get enemies() { return enemies; },
     get purse() { return purse; },
     get altarOpen() { return !!altar; },
     spend(n) { purse -= n; },
@@ -151,10 +155,14 @@ export function createGame() {
       for (const l of later) if ((l.t -= dt) <= 0) strike(l.imp);
       later = later.filter((l) => l.t > 0);
 
-      for (const s of slimes) {
+      for (const m of merchants) m.step(dt, hero);
+      for (const s of enemies) {
         if (s.hp <= 0 || !near(s.x, s.y, 200)) continue;
-        s.step(dt, level);
+        s.step(dt, level, hero);
         if (s.landed) game.emit("plop", { x: s.x });
+        // les attaques des monstres s'entendent : plongeon, charge, morsure
+        for (const [flag, sound] of [["swooped", "swoop"], ["charged", "charge"], ["struck", "lunge"]])
+          if (s[flag]) { s[flag] = false; game.emit(sound, { x: s.x }); }
         // la brûlure : 1 dégât par seconde, une flammèche à chaque fois
         if (s.burn > 0) {
           s.burn -= dt;
@@ -179,7 +187,7 @@ export function createGame() {
           game.shake(0.2, 2);
         }
       }
-      slimes = slimes.filter((s) => s.hp > 0);
+      enemies = enemies.filter((s) => s.hp > 0);
       if (shieldFx) {
         shieldFx.options.x = hero.x;
         shieldFx.options.y = hero.y;
@@ -220,7 +228,7 @@ export function createGame() {
       if (hero.dead) {
         hero.reset();
         atFire = checkpoint;
-        spawnSlimes();
+        spawnEnemies();
         game.say("VOUS REPRENEZ AU BRASIER");
         game.emit("death");
       }
@@ -250,9 +258,9 @@ export function createGame() {
           game.say(node(id).name.toUpperCase());
         }
       }
-      // C : l'autel devant un brasero allumé, sinon le coup spécial équipé
+      // C : l'échoppe devant un marchand, sinon le coup spécial équipé
       if (pressed.special) {
-        if (litFireHere() >= 0 && !hero.busy) {
+        if (merchantHere() && !hero.busy) {
           altar = new Altar();
           game.emit("open");
           return;
@@ -294,7 +302,9 @@ export function createGame() {
       for (const f of fires) if (near(f.x, f.y)) f.fx.draw(frame, "back");
       drawTiles(frame, level);
       for (const f of fires) if (near(f.x, f.y)) f.fx.draw(frame, "front");
-      for (const s of slimes) if (near(s.x, s.y)) s.draw(frame);
+      const p = painterFor(frame);
+      for (const m of merchants) if (near(m.x, m.y)) { m.drawBack(frame, p.place(0, 0)); m.drawMage(frame); m.drawFront(frame, painterFor(frame)); }
+      for (const s of enemies) if (near(s.x, s.y)) s.draw(frame);
       for (const e of fxs) e.fx.draw(frame, "back");
       shieldFx?.draw(frame, "back");
       cape.draw(painterFor(frame));
@@ -303,8 +313,8 @@ export function createGame() {
       for (const e of fxs) e.fx.draw(frame, "front");
       for (const p of projectiles) p.draw(frame);
       embers.draw(painterFor(frame), hero.time);
-      const at = litFireHere();
-      drawHud(frame, { hp: hero.hp, maxHp: hero.maxHp, purse, toast, ardor: hero.ardor, equipped: skills.equipped, specials: [...skills.owned].filter((id) => node(id).ardor).length, altarHint: at >= 0 && !altar ? [fires[at].x, fires[at].y] : null });
+      const at = merchantHere();
+      drawHud(frame, { hp: hero.hp, maxHp: hero.maxHp, purse, toast, ardor: hero.ardor, equipped: skills.equipped, specials: [...skills.owned].filter((id) => node(id).ardor).length, altarHint: at && !altar ? [at.x, at.y] : null });
       if (altar) altar.draw(frame, game);
       return frame;
     },

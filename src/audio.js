@@ -48,7 +48,14 @@ const RECIPES = {
     { files: n5("impactPlate_heavy"), vol: 0.7, rate: 1.3 },
     { files: n5("impactPunch_heavy"), vol: 0.7 },
   ],
-  // l'autel
+  // les attaques des monstres
+  swoop: [
+    { files: ["cloth1", "cloth3"], vol: 0.4, rate: 0.8 },
+    { files: ["swing_0", "swing_1", "swing_2"], vol: 0.25, rate: 1.3 },
+  ],
+  charge: [{ files: ["ignite"], vol: 0.5, rate: 1.5 }],
+  lunge: [{ files: ["swing_0", "swing_1", "swing_2"], vol: 0.35, rate: 1.5 }],
+  // l'échoppe
   open: [{ files: ["ignite"], vol: 0.45, rate: 0.8 }],
   close: [{ files: ["cloth1", "cloth2"], vol: 0.35 }],
   tick: [{ files: n5("footstep_concrete"), vol: 0.2, rate: 1.6 }],

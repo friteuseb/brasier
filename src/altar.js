@@ -1,4 +1,4 @@
-// L'autel du brasier : l'écran de l'arbre d'évolution. Trois colonnes (les voies), quatre paliers chacune.
+// L'échoppe du mage : l'écran de l'arbre d'évolution, ouvert devant un marchand. Trois colonnes (les voies), quatre paliers chacune.
 // Flèches : choisir ; X ou Entrée : acheter, ou équiper un coup spécial déjà appris ; C ou Échap : fermer.
 
 import { hex, mix, painterFor } from "pixelfx";
@@ -7,6 +7,7 @@ import { BRANCHES, node } from "./skills.js";
 const C = Object.fromEntries(
   Object.entries({ ink: "#0d0a14", panel: "#1a1526", edge: "#3a3050", text: "#f4e6c8", dim: "#7a6e8a", lock: "#4a4258", gold: "#ffc23d", red: "#e0503e" }).map(([k, v]) => [k, hex(v)]),
 );
+const GREETINGS = ["« Des braises ? Voyons ce qu'elles valent. »", "« Le feu, la foi ou l'acier, chevalier ? »", "« Approchez. Mes savoirs ont un prix. »"];
 const COLS = [55, 160, 265], BOX_W = 96, BOX_H = 20, TOP = 46, GAP = 25;
 
 export class Altar {
@@ -14,7 +15,8 @@ export class Altar {
     this.col = 0;
     this.row = 0;
     this.flash = 0; // l'éclat d'un achat
-    this.msg = "";
+    // le mage accueille le chevalier
+    this.msg = GREETINGS[Math.floor(Math.random() * GREETINGS.length)];
   }
 
   /** pressed : les touches tout juste appuyées. Renvoie "close" pour fermer. */
@@ -68,7 +70,7 @@ export class Altar {
     }
     const p = painterFor(frame);
     p.place(frame.ox, frame.oy);
-    p.text("AUTEL DU BRASIER", W / 2, 6, C.text, { font: "fr", align: "center", outline: C.ink });
+    p.text("ÉCHOPPE DU MAGE", W / 2, 6, C.text, { font: "fr", align: "center", outline: C.ink });
     p.text(`${game.purse} BRAISES`, W - 8, 9, C.gold, { font: "frmini", align: "right", outline: C.ink });
     const sk = game.skills;
     BRANCHES.forEach((b, ci) => {

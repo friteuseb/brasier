@@ -71,7 +71,7 @@ const MOVES = {
       if (!s.struck && s.tau >= 0) {
         // l'éclair vise l'ennemi le plus proche devant, à moins de 10 cases ; sinon 5 cases devant
         s.struck = true;
-        const ahead = game.slimes.filter((e) => (e.x - h.x) * h.face > 0 && Math.abs(e.x - h.x) < 160 && Math.abs(e.y - h.y) < 48);
+        const ahead = game.enemies.filter((e) => (e.x - h.x) * h.face > 0 && Math.abs(e.x - h.x) < 160 && Math.abs(e.y - h.y) < 48);
         ahead.sort((a, b) => Math.abs(a.x - h.x) - Math.abs(b.x - h.x));
         const x = ahead[0]?.x ?? h.x + h.face * 80, y = ahead[0]?.y ?? floorBelow(game.level, x, h.y);
         game.addFx(createFx(smite, { x, y, seed: 9 }));
@@ -202,7 +202,7 @@ export class Fireball {
     this.fx.update(dt);
     const me = around(this.x, this.y + 6, 6, 12, 0);
     const wall = game.level.solid(Math.floor((this.x + this.dir * 4) / TILE), Math.floor(this.y / TILE));
-    const enemy = game.slimes.some((e) => { const b = e.box(); return me.x0 < b.x1 && me.x1 > b.x0 && me.y0 < b.y1 && me.y1 > b.y0; });
+    const enemy = game.enemies.some((e) => { const b = e.box(); return me.x0 < b.x1 && me.x1 > b.x0 && me.y0 < b.y1 && me.y1 > b.y0; });
     if (!(wall || enemy || this.t > 1.4)) return [];
     this.dead = true;
     const y = floorBelow(game.level, this.x, this.y + 20);

@@ -37,7 +37,7 @@ export function drawHud(frame, s) {
   if (s.toast.t > 0) p.text(s.toast.text, W / 2, 34, TEXT, { font: "fr", align: "center", outline: INK, a: Math.min(1, s.toast.t / 0.4) });
   if (s.altarHint) {
     const [x, y] = s.altarHint;
-    p.text("C : AUTEL", x - frame.ox, y - frame.oy - 84, TEXT, { font: "frmini", align: "center", outline: INK });
+    p.text("C : BOUTIQUE", x - frame.ox, y - frame.oy - 74, TEXT, { font: "frmini", align: "center", outline: INK });
   }
   for (let i = 0; i < color.length; i++) if (color[i] !== before[i]) light[i] = 0;
 }

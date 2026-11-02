@@ -19,6 +19,13 @@ const SCENARIOS = {
   fire: [["at", 43, 7], [0.2, ""], [0.25, "right"], [1.4, ""]],
   // l'autel : ouvrir, apprendre Flamme 1 et 2, aller voir l'Acier, fermer
   altar: [["load", { purse: 40 }], [0.3, ""], [0.05, "special"], [0.3, ""], [0.05, "attack"], [0.3, ""], [0.05, "down"], [0.1, ""], [0.05, "attack"], [0.4, ""], [0.05, "down"], [0.3, ""], [0.05, "right"], [0.1, ""], [0.05, "right"], [0.3, ""], [0.05, "attack"], [0.3, ""], [0.05, "special"], [0.4, ""]],
+  // la première échoppe : on arrive, le mage salue, on ouvre la boutique
+  shop: [["load", { purse: 30 }], ["at", 10, 9], [0.6, ""], [0.05, "special"], [0.6, ""]],
+  // chaque monstre : on se pose près de lui et on attend qu'il attaque
+  bat: [["at", 22, 9], [0.3, "right"], [2.6, ""]],
+  skull: [["at", 41, 8], [3.6, ""]],
+  snake: [["at", 28, 9], [0.1, "right"], [2.4, ""]],
+  ghost: [["at", 45, 7], [3.0, ""]],
   old: [[0.6, ""], [1.6, "right"], [0.5, "right jump"], [0.6, "right"], [0.4, "jump"], [0.8, ""], [1.2, "right"], [0.3, "right jump"], [0.9, "right"]],
 };
 // « special:<id> » : le chevalier connaît ce coup, a sa jauge pleine, et le lance face au slime de la colonne 31
