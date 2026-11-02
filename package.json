@@ -1,0 +1,19 @@
+{
+  "name": "brasier",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Un petit jeu de plateforme médiéval fantastique, dessiné avec pixelfx.",
+  "type": "module",
+  "scripts": {
+    "dev": "esbuild src/main.js --bundle --outdir=www --servedir=www --serve=8077",
+    "build": "esbuild src/main.js --bundle --minify --outdir=www",
+    "shot": "node tools/shot.mjs",
+    "reach": "node tools/reach.mjs"
+  },
+  "dependencies": {
+    "pixelfx": "file:../pixelfx"
+  },
+  "devDependencies": {
+    "esbuild": "^0.25.10"
+  }
+}
