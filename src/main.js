@@ -14,10 +14,11 @@ const KEYS = {
   left: ["ArrowLeft", "KeyA", "KeyQ"],
   right: ["ArrowRight", "KeyD"],
   jump: ["Space", "ArrowUp", "KeyW", "KeyZ"],
+  attack: ["KeyX", "KeyJ"],
 };
 // une touche tapée plus vite qu'une image compte quand même : on la garde jusqu'à la fin de l'image suivante
 const down = new Set(), tapped = new Set();
-const keys = { left: false, right: false, jump: false };
+const keys = { left: false, right: false, jump: false, attack: false };
 const sync = () => { for (const [k, codes] of Object.entries(KEYS)) keys[k] = codes.some((c) => down.has(c) || tapped.has(c)); };
 addEventListener("keydown", (e) => {
   if (Object.values(KEYS).flat().includes(e.code)) e.preventDefault();

@@ -24,10 +24,13 @@ const RUN = [
 const RISE = { ...SWORD, lean: 2, ffx: 6, ffy: -11, fbx: -5, fby: -6, fx: 11, fy: -26, bx: -6, by: -27 };
 const APEX = { ...SWORD, lean: 1, crouch: 1, ffx: 5, ffy: -9, fbx: -4, fby: -9, fx: 12, fy: -25, bx: -7, by: -29 };
 const FALL = { ...SWORD, lean: -1, ffx: 6, ffy: -5, fbx: -4, fby: -11, fx: 13, fy: -25, bx: -8, by: -31 };
+const HURT = { ...SWORD, crouch: 4, lean: -5, hx: -1, fx: 6, fy: -30, sa: -1.6, bx: -11, by: -27, ffx: 9, ffy: -7, fbx: -6 };
 const LAND = { ...SWORD, crouch: 7, lean: 4, ffx: 8, fbx: -8, fx: 13, fy: -16, bx: 6, by: -16 };
 
 /** La pose du chevalier selon son état. */
 export function poseFor(h) {
+  if (h.attack) return h.attack.pose;
+  if (h.hurtT > 0) return HURT;
   if (!h.ground) return h.vy < -80 ? RISE : h.vy < 90 ? APEX : FALL;
   if (h.landT > 0) return LAND;
   if (Math.abs(h.vx) > 12) return RUN[Math.floor(h.stride / 6) % 8];
@@ -110,8 +113,11 @@ export class Cape {
 
 /** Peindre le chevalier dans une image, pieds en (x, y) dans le monde. */
 export function drawKnight(frame, h) {
-  const r = posed(h.pose), W = frame.w, H = frame.h, flip = h.face < 0;
-  const bx = Math.round(h.x) - frame.ox, by = Math.round(h.y) - frame.oy;
+  // il clignote tant qu'il est protégé après un choc
+  if (h.invuln > 0 && Math.floor(h.invuln * 14) % 2) return;
+  const q = h.pose, r = posed(q), W = frame.w, H = frame.h, flip = h.face < 0;
+  // les poses d'attaque déplacent le corps (un pas en arrière pour armer, un pas en avant pour frapper)
+  const bx = Math.round(h.x + h.face * (q.x ?? 0)) - frame.ox, by = Math.round(h.y + (q.y ?? 0)) - frame.oy;
   for (let i = 0; i < r.n; i++) {
     const px = flip ? bx - r.xs[i] - 1 : bx + r.xs[i], py = by + r.ys[i];
     if (px < 0 || py < 0 || px >= W || py >= H) continue;

@@ -11,6 +11,8 @@ import { createGame, W, H } from "../src/game.js";
 const SCENARIOS = {
   // du départ : saute le trou, monte sur les marches, s'arrête, repart
   run: [[0.5, ""], [0.8, "right"], [0.35, "right jump"], [0.8, "right"], [0.6, ""], [0.25, "jump"], [0.7, ""], [1.0, "right"], [0.4, "right jump"], [0.6, "right"]],
+  // jusqu'au premier slime, un combo complet (trois appuis), puis la suite
+  fight: [["at", 27, 9], [0.25, "right"], [0.05, "attack"], [0.1, ""], [0.05, "attack"], [0.12, ""], [0.05, "attack"], [1.2, ""], [0.05, "attack"], [0.1, ""], [0.05, "attack"], [0.12, ""], [0.05, "attack"], [1.0, ""]],
   old: [[0.6, ""], [1.6, "right"], [0.5, "right jump"], [0.6, "right"], [0.4, "jump"], [0.8, ""], [1.2, "right"], [0.3, "right jump"], [0.9, "right"]],
 };
 const name = process.argv[2] ?? "run", plan = SCENARIOS[name];
@@ -18,8 +20,13 @@ const every = Number(process.argv[3] ?? 0.2), crop = process.argv.includes("--he
 const CW = crop ? 80 : W, CH = crop ? 60 : H, cols = crop ? 6 : 4, k = crop ? 4 : 2;
 const game = createGame(), shots = [];
 let t = 0, next = 0;
-for (const [d, held] of plan) {
-  const keys = { left: held.includes("left"), right: held.includes("right"), jump: held.includes("jump") };
+for (const [d, held, ...at] of plan) {
+  // ["at", x, y] : poser le chevalier à la colonne x, sur la ligne y (cases de 16 px)
+  if (d === "at") {
+    Object.assign(game.hero, { x: held * 16 + 8, y: (at[0] + 1) * 16, vx: 0, vy: 0 });
+    continue;
+  }
+  const keys = { left: held.includes("left"), right: held.includes("right"), jump: held.includes("jump"), attack: held.includes("attack") };
   for (let u = 0; u < d; u += 1 / 60, t += 1 / 60) {
     game.step(1 / 60, keys);
     if (t >= next) {
