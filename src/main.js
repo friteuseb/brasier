@@ -2,6 +2,7 @@
 
 import { composite } from "pixelfx";
 import { createGame, W, H } from "./game.js";
+import * as audio from "./audio.js";
 
 const canvas = document.querySelector("canvas");
 const ctx = canvas.getContext("2d");
@@ -21,6 +22,9 @@ const down = new Set(), tapped = new Set();
 const keys = { left: false, right: false, jump: false, attack: false };
 const sync = () => { for (const [k, codes] of Object.entries(KEYS)) keys[k] = codes.some((c) => down.has(c) || tapped.has(c)); };
 addEventListener("keydown", (e) => {
+  // le navigateur n'ouvre le son qu'après un geste ; M coupe et rend le son
+  audio.unlock();
+  if (e.code === "KeyM" && !e.repeat) game.say(audio.toggleMute() ? "SON COUPÉ" : "SON RÉTABLI");
   if (Object.values(KEYS).flat().includes(e.code)) e.preventDefault();
   down.add(e.code);
   tapped.add(e.code);
@@ -49,6 +53,8 @@ function tick(now) {
   const dt = Math.min(0.05, (now - last) / 1000);
   last = now;
   game.step(dt, keys);
+  audio.play(game.events, game.cam, W);
+  audio.fireLevel(game.fireNear());
   tapped.clear();
   sync();
   composite(game.draw(), img.data, null);

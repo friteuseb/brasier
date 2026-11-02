@@ -57,6 +57,7 @@ export class Hero {
     this.buffer = Math.max(0, this.buffer - dt);
     this.coyote = this.ground ? COYOTE : Math.max(0, this.coyote - dt);
     if (this.buffer > 0 && this.coyote > 0) {
+      game?.emit("jump", { x: this.x });
       this.vy = -JUMP;
       this.buffer = this.coyote = 0;
       this.ground = false;
@@ -68,9 +69,15 @@ export class Hero {
     const wasGround = this.ground, fallSpeed = this.vy;
     this.moveY(this.vy * dt, level);
     if (this.ground && !wasGround && fallSpeed > 160) this.landT = 0.1;
+    if (this.ground && !wasGround && fallSpeed > 60) game?.emit("land", { x: this.x, speed: fallSpeed });
     this.landT = Math.max(0, this.landT - dt);
     this.airT = this.ground ? 0 : this.airT + dt;
-    if (this.ground) this.stride += Math.abs(this.vx) * dt;
+    if (this.ground) {
+      // un pas à chaque contact du pied (dessins 0 et 4 de la course, un tous les 24 px)
+      const before = Math.floor(this.stride / 24);
+      this.stride += Math.abs(this.vx) * dt;
+      if (Math.abs(this.vx) > 12 && Math.floor(this.stride / 24) !== before) game?.emit("step", { x: this.x });
+    }
 
     // tombé dans un trou : retour au départ, un cœur en moins
     if (this.y > level.pxH + 64) {

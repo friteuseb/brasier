@@ -36,6 +36,7 @@ export function createGame() {
   let checkpoint = START, atFire = -1; // atFire : le brasero où il se tient, -1 ailleurs
   const embers = new Embers(), R = new Rng(7);
   let purse = 0; // les braises ramassées
+  let streak = 0, streakT = 0; // les braises ramassées d'affilée font monter le tintement
   const toast = { text: "", t: 0 };
   let slimes = [];
   const spawnSlimes = () => (slimes = level.slimes.map(([x, y], i) => new Slime(x, y, i + 1)));
@@ -59,6 +60,15 @@ export function createGame() {
 
   const game = {
     frame, hero, level, cam,
+    // les événements de l'image (pour les sons) : { type, x, y, ... } ; main.js les lit après step()
+    events: [],
+    emit(type, e = {}) { game.events.push({ type, ...e }); },
+    /** 0 loin de tout feu, 1 tout près d'un brasero allumé. */
+    fireNear() {
+      let k = 0;
+      for (const f of fires) if (f.lit) k = Math.max(k, 1 - Math.hypot(f.x - hero.x, f.y - hero.y) / 140);
+      return Math.max(0, k);
+    },
     get slimes() { return slimes; },
     get purse() { return purse; },
     say(text) { toast.text = text; toast.t = 2; },
@@ -88,11 +98,13 @@ export function createGame() {
           if (!overlaps(box, s.box())) continue;
           touched = true;
           const dead = s.hit(hero.x, dmg, hit.push ?? 2);
+          game.emit("hit", { x: s.x, heavy: (hit.stop ?? 0) >= 0.14 });
           game.addFx(createFx(hitSpark, { x: s.x, y: s.y, height: 10, flip: hero.x > s.x, seed: Math.floor(hero.time * 60) }));
           // il meurt en éclaboussure de sa propre couleur, plus discrète qu'un nuage gris
           if (dead) {
             game.addFx(createFx(poof, { x: s.x, y: s.y, seed: 3, palette: GOO, light: 0.6 }), 1.3);
             embers.burst(s.x, s.y - 8, s.loot, () => R.next());
+            game.emit("kill", { x: s.x });
           }
         }
         // un coup qui porte gèle le monde et secoue l'image ; un coup dans le vide, non
@@ -106,16 +118,24 @@ export function createGame() {
         if (!near(s.x, s.y, 200)) continue;
         s.step(dt, level);
         const me = { x0: hero.x - HW, x1: hero.x + HW, y0: hero.y - HH, y1: hero.y };
+        if (s.landed) game.emit("plop", { x: s.x });
         if (s.stun <= 0 && overlaps(me, s.box()) && hero.hurt(s.x)) {
+          game.emit("hurt", { x: hero.x });
           freeze = 0.08;
           game.shake(0.2, 2);
         }
       }
-      purse += embers.step(dt, level, hero);
+      const got = embers.step(dt, level, hero);
+      for (let i = 0; i < got; i++) game.emit("ember", { x: hero.x, streak: streak++ });
+      if (got) streakT = 0.6;
+      streakT -= dt;
+      if (streakT <= 0) streak = 0;
+      purse += got;
       // un brasero touché s'allume : il rend les cœurs et devient le point de reprise
       // il réapparaît sur le brasero après une chute : ce n'est pas une visite, il ne regagne rien
       if (hero.respawned) {
         hero.respawned = false;
+        game.emit("fall");
         atFire = checkpoint;
       }
       const here = fires.findIndex((f) => Math.abs(hero.x - f.x) <= 12 && Math.abs(hero.y - f.y) <= 4);
@@ -126,6 +146,7 @@ export function createGame() {
           game.addFx(createFx(burst, { x: f.x, y: f.y - 30, palette: FLAME, seed: here + 2 }));
           game.shake(0.15, 1);
           game.say("BRASIER ALLUMÉ");
+          game.emit("ignite", { x: f.x });
         }
         checkpoint = here;
         hero.spawnAt = { x: f.x, y: f.y };
@@ -139,10 +160,12 @@ export function createGame() {
         atFire = checkpoint;
         spawnSlimes();
         game.say("VOUS REPRENEZ AU BRASIER");
+        game.emit("death");
       }
     },
 
     step(dt, keys) {
+      game.events.length = 0;
       shakeT = Math.max(0, shakeT - dt);
       // gel à l'impact : rien ne bouge, sauf les braseros (le feu ne s'arrête pas)
       if (freeze > 0) {

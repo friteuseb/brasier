@@ -36,6 +36,7 @@ export class Slime {
     this.flash = Math.max(0, this.flash - dt);
     this.stun = Math.max(0, this.stun - dt);
     // sonné, il ne saute plus ; sinon sa boucle avance
+    const wasAir = this.airborne;
     if (this.stun <= 0) {
       this.t += dt;
       this.fx.update(dt);
@@ -54,6 +55,7 @@ export class Slime {
       this.kx *= Math.pow(0.002, dt);
       if (Math.abs(this.kx) < 4) this.kx = 0;
     }
+    this.landed = wasAir && !this.airborne;
     this.fx.options.x = Math.round(this.x);
     this.fx.options.y = this.y;
   }

@@ -35,6 +35,7 @@ export class Attack {
       // l'effet part sur l'image de la coupe ; le chevalier s'avance d'un pas
       this.fx = createFx(s.mod, { x: h.x, y: h.y, flip: this.face < 0, seed: 1 + this.n });
       game.addFx(this.fx, s.speed);
+      game.emit("swing", { x: h.x, n: this.n });
       if (h.ground) h.vx = this.face * s.lunge;
     }
     const out = [];
