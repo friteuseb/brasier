@@ -1,4 +1,4 @@
-// Les sons : de vrais enregistrements (www/sons, packs CC0 de Kenney), joués avec la Web Audio API. Chaque événement
+// Les sons : des enregistrements CC0 de Kenney et des sons générés en local (www/sons, voir tools/sons), joués avec la Web Audio API. Chaque événement
 // du jeu a plusieurs variantes tirées au hasard, avec une petite variation de hauteur, pour éviter l'effet mitraillette.
 // Les sons sont placés à gauche ou à droite selon leur place à l'écran. Le navigateur n'ouvre le son qu'après une touche.
 
@@ -16,7 +16,7 @@ const RECIPES = {
     { files: n5("footstep_concrete"), vol: 0.6, rate: 0.85 },
     { files: n5("impactPlate_light"), vol: 0.18, rate: 1.1 },
   ],
-  swing: [{ files: ["knifeSlice", "knifeSlice2"], vol: 0.3, rate: 1.25, vary: 0.08 }],
+  swing: [{ files: ["swing_0", "swing_1", "swing_2"], vol: 0.55, vary: 0.07 }],
   hit: [
     { files: n5("impactPunch_medium"), vol: 0.65 },
     { files: n5("impactSoft_medium"), vol: 0.5, rate: 0.8 },
@@ -25,17 +25,19 @@ const RECIPES = {
     { files: n5("impactPunch_heavy"), vol: 0.8 },
     { files: n5("impactSoft_heavy"), vol: 0.5, rate: 0.8 },
   ],
-  kill: [{ files: n5("impactSoft_heavy"), vol: 0.7, rate: 0.7 }],
+  kill: [
+    { files: ["splat_0", "splat_1", "splat_2"], vol: 0.8 },
+    { files: n5("impactSoft_heavy"), vol: 0.4, rate: 0.7 },
+  ],
   plop: [{ files: n5("impactSoft_medium"), vol: 0.14, rate: 1.4, vary: 0.12 }],
-  ember: [{ files: ["handleCoins2"], vol: 0.12, rate: 1.3, vary: 0.1 }],
+  ember: [{ files: ["ember_0", "ember_1", "ember_2", "ember_3"], vol: 0.35, rate: 1.1, vary: 0.12 }],
   hurt: [
     { files: n5("impactPlate_medium"), vol: 0.6 },
     { files: n5("impactPunch_medium"), vol: 0.4, rate: 0.9 },
   ],
   death: [{ files: n5("impactPlate_heavy"), vol: 0.7, rate: 0.85 }],
   fall: [{ files: n5("impactPlate_heavy"), vol: 0.35, rate: 0.7 }],
-  // ignite et le crépitement viendront de sons générés en local (voir tools/sons)
-  ignite: [{ files: ["ignite"], vol: 0.8 }],
+  ignite: [{ files: ["ignite"], vol: 0.9 }],
 };
 const ALL = [...new Set(Object.values(RECIPES).flatMap((r) => r.flatMap((l) => l.files))), "fire-loop"];
 
