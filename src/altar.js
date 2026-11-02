@@ -33,7 +33,7 @@ export class Altar {
       if (st === "owned") {
         if (n.ardor && sk.equipped !== n.id) {
           sk.equip(n.id);
-          this.msg = `${n.name} équipé`;
+          this.msg = `${n.name} équipé (V en jeu change de coup)`;
           game.emit("equip");
         }
       } else if (st === "locked") {

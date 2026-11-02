@@ -61,6 +61,13 @@ export class Skills {
   equip(id) {
     if (this.owned.has(id) && NODES.get(id).ardor) this.equipped = id;
   }
+  /** Passer au coup spécial appris suivant (dans l'ordre de l'arbre) ; renvoie le nouveau, ou null. */
+  cycle() {
+    const list = BRANCHES.flatMap((b) => b.nodes).filter((n) => n.ardor && this.owned.has(n.id)).map((n) => n.id);
+    if (list.length < 2) return null;
+    this.equipped = list[(list.indexOf(this.equipped) + 1) % list.length];
+    return this.equipped;
+  }
   toJSON() {
     return { owned: [...this.owned], equipped: this.equipped };
   }

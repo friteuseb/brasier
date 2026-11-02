@@ -17,6 +17,7 @@ const KEYS = {
   jump: ["Space", "ArrowUp", "KeyW", "KeyZ"],
   attack: ["KeyX", "KeyJ"],
   special: ["KeyC", "KeyK"],
+  cycle: ["KeyV", "KeyL"],
   up: ["ArrowUp", "KeyW", "KeyZ"],
   down: ["ArrowDown", "KeyS"],
   confirm: ["Enter"],

@@ -26,11 +26,13 @@ export function drawHud(frame, s) {
   // l'ardeur : une jauge de 50 px ; le coup équipé s'allume quand elle suffit
   if (s.equipped) {
     const n = node(s.equipped), ready = s.ardor >= n.ardor, y = 27;
+    // la jauge et le coup équipé
     p.rect(6, y, 52, 4, INK);
     p.rect(7, y + 1, 50, 2, BAR[0]);
     p.rect(7, y + 1, Math.round(s.ardor / 2), 2, ready ? BAR[3] : BAR[2]);
     p.rect(7 + n.ardor / 2 - 1, y, 1, 4, TEXT); // le seuil du coup équipé
     p.text(`C : ${n.name}`, 62, y - 3, ready ? GOLD : DIM, { font: "frmini", outline: INK });
+    if (s.specials > 1) p.text("V : CHANGER", 62, y + 5, DIM, { font: "frmini", outline: INK });
   }
   if (s.toast.t > 0) p.text(s.toast.text, W / 2, 34, TEXT, { font: "fr", align: "center", outline: INK, a: Math.min(1, s.toast.t / 0.4) });
   if (s.altarHint) {

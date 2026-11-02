@@ -23,7 +23,7 @@ const STEP = 1 / 120;
 const SAVE_VERSION = 1; // à augmenter quand le niveau ou le format changent
 const COALS = ["#1a0806", "#2a0c0a", "#3e120e", "#561812", "#6e1e14", "#862a18", "#9a361c", "#ad4420", "#c05424"];
 const FLAME = ["#4a1712", "#c9281f", "#f2561d", "#ff8a2a", "#ffc23d", "#ffe26b", "#fff3a6", "#ffffff"];
-const KEYS = ["left", "right", "up", "down", "jump", "attack", "special", "confirm", "back"];
+const KEYS = ["left", "right", "up", "down", "jump", "attack", "special", "cycle", "confirm", "back"];
 const ARDOR_HIT = 10, ARDOR_KILL = 20;
 
 export function createGame() {
@@ -242,6 +242,14 @@ export function createGame() {
         }
         return;
       }
+      // V : passer au coup spécial suivant parmi ceux qu'on a appris
+      if (pressed.cycle) {
+        const id = skills.cycle();
+        if (id) {
+          game.emit("equip");
+          game.say(node(id).name.toUpperCase());
+        }
+      }
       // C : l'autel devant un brasero allumé, sinon le coup spécial équipé
       if (pressed.special) {
         if (litFireHere() >= 0 && !hero.busy) {
@@ -296,7 +304,7 @@ export function createGame() {
       for (const p of projectiles) p.draw(frame);
       embers.draw(painterFor(frame), hero.time);
       const at = litFireHere();
-      drawHud(frame, { hp: hero.hp, maxHp: hero.maxHp, purse, toast, ardor: hero.ardor, equipped: skills.equipped, altarHint: at >= 0 && !altar ? [fires[at].x, fires[at].y] : null });
+      drawHud(frame, { hp: hero.hp, maxHp: hero.maxHp, purse, toast, ardor: hero.ardor, equipped: skills.equipped, specials: [...skills.owned].filter((id) => node(id).ardor).length, altarHint: at >= 0 && !altar ? [fires[at].x, fires[at].y] : null });
       if (altar) altar.draw(frame, game);
       return frame;
     },
