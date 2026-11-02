@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Écoute des sons</title>
+  <style>
+    :root { --bg: #120f1a; --panel: #1d1828; --text: #f4e6c8; --dim: #9a8fae; --accent: #ffc23d; }
+    body { margin: 0; padding: 24px 16px; background: var(--bg); color: var(--text); font: 15px/1.5 system-ui, sans-serif; }
+    main { max-width: 760px; margin: 0 auto; }
+    h1 { font-size: 22px; margin: 0 0 4px; }
+    p { color: var(--dim); margin: 0 0 20px; }
+    .group { background: var(--panel); border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; }
+    .group h2 { font-size: 14px; margin: 0 0 4px; color: var(--accent); }
+    .group .desc { font-size: 13px; color: var(--dim); margin-bottom: 10px; }
+    .row { display: flex; flex-wrap: wrap; gap: 8px; }
+    button { background: #2c2440; color: var(--text); border: 1px solid #44395c; border-radius: 6px; padding: 8px 12px; font: inherit; cursor: pointer; }
+    button:hover { border-color: var(--accent); }
+    button.on { background: var(--accent); color: #1a1208; }
+    #all { margin-top: 8px; }
+  </style>
+</head>
+<body>
+<main>
+  <h1>Écoute des sons</h1>
+  <p>Cliquez pour écouter. Notez les noms de ceux qui vous plaisent (par exemple « swing-b_1 ») et donnez-les à Claude. La touche Espace rejoue le dernier son.</p>
+  <div id="groups"></div>
+</main>
+<script>
+  const DESC = {
+    "swing-a": "lame lourde, souffle d'une demi-seconde",
+    "swing-b": "lame rapide, souffle vif et aérien",
+    "swing-c": "épée longue, souffle grave",
+    "swing-d": "souffle de cinéma, court",
+    "swing-e": "souffle suivi d'un tintement d'acier",
+  };
+  let last = null;
+  const play = (name, btn) => {
+    document.querySelectorAll("button.on").forEach((b) => b.classList.remove("on"));
+    btn.classList.add("on");
+    last = [name, btn];
+    new Audio(`sons/candidats/${name}.ogg`).play();
+  };
+  addEventListener("keydown", (e) => { if (e.code === "Space" && last) { e.preventDefault(); play(...last); } });
+  fetch("sons/candidats/liste.json").then((r) => r.json()).then((list) => {
+    const groups = {};
+    for (const n of list) (groups[n.split("_")[0]] ??= []).push(n);
+    const root = document.getElementById("groups");
+    for (const [g, names] of Object.entries(groups)) {
+      const div = document.createElement("div");
+      div.className = "group";
+      div.innerHTML = `<h2>${g}</h2><div class="desc">${DESC[g] ?? ""}</div><div class="row"></div>`;
+      for (const n of names) {
+        const b = document.createElement("button");
+        b.textContent = n;
+        b.onclick = () => play(n, b);
+        div.querySelector(".row").append(b);
+      }
+      root.append(div);
+    }
+  });
+</script>
+</body>
+</html>

@@ -9,6 +9,12 @@ const NEG = "music, melody, singing, speech, voice, talking, low quality, distor
 
 // chaque son : le texte, la durée générée, la graine de départ
 export const SOUNDS = {
+  // le souffle de l'épée, deuxième essai : plusieurs descriptions, l'oreille choisit (www/ecoute.html)
+  "swing-a": { text: "a single sword swing whoosh, heavy steel blade cutting through the air, smooth swoosh about half a second long, close microphone, clean foley", seconds: 2 },
+  "swing-b": { text: "fast blade swish, air whoosh of a sword slash, crisp and airy, no impact, game sound effect", seconds: 2 },
+  "swing-c": { text: "medieval longsword swung hard, deep whooshing air, foley recording, dry, single swing", seconds: 2 },
+  "swing-d": { text: "whoosh swish sound effect, quick movement through air, cinematic sword swipe, short", seconds: 2 },
+  "swing-e": { text: "sword slash with metallic ring, blade whoosh followed by a short steel shing, fantasy game", seconds: 2 },
   swing: { text: "sword swing whoosh, a single fast blade swooshing through the air, close up, dry foley sound effect", seconds: 1.5 },
   ignite: { text: "large brazier igniting, a whoosh of flames bursting into a roaring fire, fire burst foley sound effect", seconds: 3 },
   "fire-loop": { text: "crackling wood fire in an iron brazier, steady flames, pops and crackles, close, field recording", seconds: 12 },
