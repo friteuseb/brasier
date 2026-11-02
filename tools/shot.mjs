@@ -17,20 +17,36 @@ const SCENARIOS = {
   loot: [["at", 27, 9], [0.25, "right"], [0.05, "attack"], [0.1, ""], [0.05, "attack"], [0.9, ""], [0.5, "right"], [1.2, ""], ["at", 42, 9], [0.4, "right"], [0.3, "right jump"], [0.5, "right"], [1.0, ""]],
   // allume un brasero éteint
   fire: [["at", 43, 7], [0.2, ""], [0.25, "right"], [1.4, ""]],
+  // l'autel : ouvrir, apprendre Flamme 1 et 2, aller voir l'Acier, fermer
+  altar: [["load", { purse: 40 }], [0.3, ""], [0.05, "special"], [0.3, ""], [0.05, "attack"], [0.3, ""], [0.05, "down"], [0.1, ""], [0.05, "attack"], [0.4, ""], [0.05, "down"], [0.3, ""], [0.05, "right"], [0.1, ""], [0.05, "right"], [0.3, ""], [0.05, "attack"], [0.3, ""], [0.05, "special"], [0.4, ""]],
   old: [[0.6, ""], [1.6, "right"], [0.5, "right jump"], [0.6, "right"], [0.4, "jump"], [0.8, ""], [1.2, "right"], [0.3, "right jump"], [0.9, "right"]],
 };
-const name = process.argv[2] ?? "run", plan = SCENARIOS[name];
+// « special:<id> » : le chevalier connaît ce coup, a sa jauge pleine, et le lance face au slime de la colonne 31
+const name = process.argv[2] ?? "run", spec = name.startsWith("special:") ? name.slice(8) : null;
+const plan = spec
+  ? [["load", { skills: { owned: ["boule-de-feu", "meteores", "chatiment", "soin", "bouclier", "ruee", "seisme"], equipped: spec } }], ["set", { ardor: 100, hp: 3 }], ["at", 27, 9], [0.1, "right"], [0.3, ""], [0.05, "special"], [2.2, ""]]
+  : SCENARIOS[name];
 const every = Number(process.argv[3] ?? 0.2), crop = process.argv.includes("--hero");
 const CW = crop ? 80 : W, CH = crop ? 60 : H, cols = crop ? 6 : 4, k = crop ? 4 : 2;
 const game = createGame(), shots = [];
 let t = 0, next = 0;
 for (const [d, held, ...at] of plan) {
   // ["at", x, y] : poser le chevalier à la colonne x, sur la ligne y (cases de 16 px)
+  // ["set", {...}] : changer l'état du chevalier
+  if (d === "set") {
+    Object.assign(game.hero, held);
+    continue;
+  }
+  // ["load", {...}] : charger une sauvegarde de test (braises, arbre)
+  if (d === "load") {
+    game.load({ v: 1, lit: [], ...held });
+    continue;
+  }
   if (d === "at") {
     Object.assign(game.hero, { x: held * 16 + 8, y: (at[0] + 1) * 16, vx: 0, vy: 0 });
     continue;
   }
-  const keys = { left: held.includes("left"), right: held.includes("right"), jump: held.includes("jump"), attack: held.includes("attack") };
+  const keys = Object.fromEntries(["left", "right", "up", "down", "jump", "attack", "special", "confirm", "back"].map((k) => [k, held.split(" ").includes(k)]));
   for (let u = 0; u < d; u += 1 / 60, t += 1 / 60) {
     game.step(1 / 60, keys);
     if (t >= next) {
@@ -55,5 +71,5 @@ shots.forEach((s, i) => {
   for (let y = 0; y < CH * k; y++) sheet.set(big.subarray(y * CW * k * 4, (y + 1) * CW * k * 4), ((oy + y) * gw * cols + ox) * 4);
 });
 mkdirSync("shots", { recursive: true });
-writeFileSync(`shots/${name}${crop ? "-hero" : ""}.png`, encodePNG(gw * cols, gh * rows, sheet));
-console.log(`shots/${name}${crop ? "-hero" : ""}.png  ${shots.length} images, ${t.toFixed(1)} s`);
+writeFileSync(`shots/${name.replace(":", "-")}${crop ? "-hero" : ""}.png`, encodePNG(gw * cols, gh * rows, sheet));
+console.log(`shots/${name.replace(":", "-")}${crop ? "-hero" : ""}.png  ${shots.length} images, ${t.toFixed(1)} s`);

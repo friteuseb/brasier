@@ -8,19 +8,29 @@ const RUN = 108, ACCEL = 1500, DECEL = 1800, AIR = 950;
 const JUMP = 330, GRAVITY = 980, FALL_GRAVITY = 1500, MAX_FALL = 430;
 const COYOTE = 0.08, BUFFER = 0.12;
 export const HW = 5, HH = 32; // demi-largeur et hauteur de la boîte de collision
-export const MAX_HP = 5;
+export const BASE_HP = 5;
 const INVULN = 1.1, HURT = 0.28;
 
 export class Hero {
-  constructor(x, y) {
+  constructor(x, y, skills = null) {
     this.spawnAt = { x, y };
+    this.skills = skills;
     this.reset();
+  }
+
+  get maxHp() {
+    return BASE_HP + (this.skills?.has("coeur-vaillant") ? 1 : 0);
+  }
+  /** En plein coup, choc ou coup spécial : il ne peut rien lancer d'autre. */
+  get busy() {
+    return !!(this.attack || this.special || this.hurtT > 0);
   }
 
   reset() {
     Object.assign(this, { x: this.spawnAt.x, y: this.spawnAt.y, vx: 0, vy: 0, face: 1, ground: true });
     Object.assign(this, { coyote: 0, buffer: 0, landT: 0, airT: 0, stride: 0, time: 0, jumpHeld: false });
-    Object.assign(this, { hp: MAX_HP, attack: null, attackHeld: false, invuln: 0, hurtT: 0 });
+    Object.assign(this, { hp: this.maxHp, attack: null, attackHeld: false, invuln: 0, hurtT: 0 });
+    Object.assign(this, { special: null, shieldT: 0, ardor: 0, ghostly: false });
   }
 
   /** Un pas de physique ; renvoie les impacts d'épée de ce pas (voir combat.js). */
@@ -28,15 +38,16 @@ export class Hero {
     this.time += dt;
     this.invuln = Math.max(0, this.invuln - dt);
     this.hurtT = Math.max(0, this.hurtT - dt);
+    this.shieldT = Math.max(0, this.shieldT - dt);
     // pendant un coup ou un choc, il ne choisit plus sa direction ; au sol, il ne court plus
-    const busy = this.attack || this.hurtT > 0;
+    const busy = this.busy;
     let dir = (keys.right ? 1 : 0) - (keys.left ? 1 : 0);
-    if (busy) dir = this.ground ? 0 : dir * 0.5;
+    if (busy) dir = this.ground || (this.special && !this.special.rooted) ? 0 : dir * 0.5;
     else if (dir) this.face = dir;
 
     // l'épée : un appui lance le premier coup, un appui pendant un coup enchaîne le suivant
     let impacts = [];
-    if (keys.attack && !this.attackHeld && this.hurtT <= 0) {
+    if (keys.attack && !this.attackHeld && this.hurtT <= 0 && !this.special) {
       if (!this.attack) this.attack = new Attack(this, 0);
       else this.attack.queued = true;
     }
@@ -46,17 +57,28 @@ export class Hero {
       if (this.attack.done === "chain") this.attack = new Attack(this, this.attack.n + 1);
       else if (this.attack.done) this.attack = null;
     }
+    // un coup spécial mène le corps tant qu'il dure
+    if (this.special) {
+      impacts.push(...this.special.step(dt, this, game));
+      if (this.special.done) {
+        this.special = null;
+        this.ghostly = false;
+      }
+    }
 
     // course : accélère vite, freine plus vite encore, moins de contrôle en l'air
-    const target = dir * RUN, rate = !this.ground ? (this.hurtT > 0 ? 200 : AIR) : this.attack ? DECEL * 0.35 : dir && Math.sign(dir) === Math.sign(this.vx || dir) ? ACCEL : DECEL;
-    this.vx += Math.max(-rate * dt, Math.min(rate * dt, target - this.vx));
+    const run = RUN * (this.skills?.has("elan") ? 1.12 : 1);
+    const dashing = this.special && !this.special.rooted;
+    const target = dir * run, rate = !this.ground ? (this.hurtT > 0 ? 200 : AIR) : this.attack ? DECEL * 0.35 : dir && Math.sign(dir) === Math.sign(this.vx || dir) ? ACCEL : DECEL;
+    // la ruée et le séisme fixent eux-mêmes la vitesse
+    if (!dashing) this.vx += Math.max(-rate * dt, Math.min(rate * dt, target - this.vx));
 
     // saut : tampon d'entrée, temps de coyote, hauteur selon la durée d'appui
     if (keys.jump && !this.jumpHeld) this.buffer = BUFFER;
     this.jumpHeld = keys.jump;
     this.buffer = Math.max(0, this.buffer - dt);
     this.coyote = this.ground ? COYOTE : Math.max(0, this.coyote - dt);
-    if (this.buffer > 0 && this.coyote > 0) {
+    if (this.buffer > 0 && this.coyote > 0 && !this.special) {
       game?.emit("jump", { x: this.x });
       this.vy = -JUMP;
       this.buffer = this.coyote = 0;
@@ -81,8 +103,9 @@ export class Hero {
 
     // tombé dans un trou : retour au départ, un cœur en moins
     if (this.y > level.pxH + 64) {
-      const hp = this.hp - 1;
+      const hp = this.hp - 1, ardor = this.ardor;
       this.reset();
+      this.ardor = ardor;
       this.hp = Math.max(0, hp); // à 0, le jeu le ramène au brasero comme pour une mort
       this.invuln = INVULN;
       this.respawned = true;
@@ -92,11 +115,13 @@ export class Hero {
 
   /** Touché par un ennemi venu de fromX : recul, clignotement, un cœur en moins. Renvoie false s'il est protégé. */
   hurt(fromX, dmg = 1) {
-    if (this.invuln > 0) return false;
+    if (this.invuln > 0 || this.shieldT > 0) return false;
     this.hp -= dmg;
     this.invuln = INVULN;
     this.hurtT = HURT;
     this.attack = null;
+    this.special = null;
+    this.ghostly = false;
     const away = this.x < fromX ? -1 : 1;
     this.vx = away * 150;
     this.vy = -170;

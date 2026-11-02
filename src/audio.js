@@ -38,6 +38,26 @@ const RECIPES = {
   death: [{ files: n5("impactPlate_heavy"), vol: 0.7, rate: 0.85 }],
   fall: [{ files: n5("impactPlate_heavy"), vol: 0.35, rate: 0.7 }],
   ignite: [{ files: ["ignite"], vol: 0.9 }],
+  // les coups spéciaux
+  cast: [{ files: ["swing_0", "swing_1", "swing_2"], vol: 0.45, rate: 0.7 }],
+  boom: [
+    { files: n5("impactPunch_heavy"), vol: 0.9, rate: 0.7 },
+    { files: ["ignite"], vol: 0.6, rate: 1.2 },
+  ],
+  smite: [
+    { files: n5("impactPlate_heavy"), vol: 0.7, rate: 1.3 },
+    { files: n5("impactPunch_heavy"), vol: 0.7 },
+  ],
+  // l'autel
+  open: [{ files: ["ignite"], vol: 0.45, rate: 0.8 }],
+  close: [{ files: ["cloth1", "cloth2"], vol: 0.35 }],
+  tick: [{ files: n5("footstep_concrete"), vol: 0.2, rate: 1.6 }],
+  learn: [
+    { files: ["ignite"], vol: 0.7, rate: 1.1 },
+    { files: n5("impactPlate_light"), vol: 0.35, rate: 1.2 },
+  ],
+  equip: [{ files: n5("impactPlate_light"), vol: 0.35, rate: 1.3 }],
+  deny: [{ files: n5("impactSoft_medium"), vol: 0.4, rate: 0.6 }],
 };
 const ALL = [...new Set(Object.values(RECIPES).flatMap((r) => r.flatMap((l) => l.files))), "fire-loop"];
 

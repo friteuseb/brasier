@@ -16,10 +16,15 @@ const KEYS = {
   right: ["ArrowRight", "KeyD"],
   jump: ["Space", "ArrowUp", "KeyW", "KeyZ"],
   attack: ["KeyX", "KeyJ"],
+  special: ["KeyC", "KeyK"],
+  up: ["ArrowUp", "KeyW", "KeyZ"],
+  down: ["ArrowDown", "KeyS"],
+  confirm: ["Enter"],
+  back: ["Escape"],
 };
 // une touche tapée plus vite qu'une image compte quand même : on la garde jusqu'à la fin de l'image suivante
 const down = new Set(), tapped = new Set();
-const keys = { left: false, right: false, jump: false, attack: false };
+const keys = {};
 const sync = () => { for (const [k, codes] of Object.entries(KEYS)) keys[k] = codes.some((c) => down.has(c) || tapped.has(c)); };
 addEventListener("keydown", (e) => {
   // le navigateur n'ouvre le son qu'après un geste ; M coupe et rend le son

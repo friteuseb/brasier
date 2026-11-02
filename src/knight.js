@@ -29,6 +29,7 @@ const LAND = { ...SWORD, crouch: 7, lean: 4, ffx: 8, fbx: -8, fx: 13, fy: -16, b
 
 /** La pose du chevalier selon son état. */
 export function poseFor(h) {
+  if (h.special) return h.special.pose;
   if (h.attack) return h.attack.pose;
   if (h.hurtT > 0) return HURT;
   if (!h.ground) return h.vy < -80 ? RISE : h.vy < 90 ? APEX : FALL;
@@ -123,4 +124,20 @@ export function drawKnight(frame, h) {
     if (px < 0 || py < 0 || px >= W || py >= H) continue;
     frame.color[py * W + px] = knightColor(r.color[i]);
   }
+}
+
+/**
+ * Le chevalier vu par les effets qui entourent le corps (prière, bouclier) : la silhouette de sa pose au repos dans la
+ * boîte de 24 x 38 du personnage pixelfx. Ses pixels restent vides, pour que l'effet ne repeigne pas le mannequin.
+ */
+let ACTOR = null;
+export function knightActor() {
+  if (ACTOR) return ACTOR;
+  const W = 24, H = 38, data = new Uint8Array(W * H), r = posed(IDLE);
+  for (let i = 0; i < r.n; i++) {
+    const x = r.xs[i] + 12, y = r.ys[i] + H;
+    if (x >= 0 && y >= 0 && x < W && y < H) data[y * W + x] = 1;
+  }
+  ACTOR = { mask: { w: W, h: H, data }, pixels: new Uint32Array(W * H), x: -12, y: -H, w: W, h: H, k: 2, head: [0, -H], chest: [0, -26] };
+  return ACTOR;
 }

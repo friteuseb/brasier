@@ -33,5 +33,14 @@ function frenchFont(base) {
   return { h: base.h + 3, space: base.space, gap: base.gap, glyphs };
 }
 
+// l'e dans l'o, dessiné à part : il n'a pas d'équivalent dans les polices d'origine
+function ligature(font, src) {
+  const rows = src.split("|").map((r) => [...r].map((c) => c === "#"));
+  const blank = Array.from({ length: rows[0].length }, () => false);
+  font.glyphs.Œ = { w: rows[0].length, rows: [blank, blank, ...rows, blank] };
+}
+
 FONTS.fr = frenchFont(FONTS.big);
 FONTS.frmini = frenchFont(FONTS.mini);
+ligature(FONTS.fr, ".######|#..#...|#..#...|#..####|#..#...|#..#...|.######");
+ligature(FONTS.frmini, ".####|#.#..|#.##.|#.#..|.####");

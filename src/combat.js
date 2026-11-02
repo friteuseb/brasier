@@ -30,17 +30,23 @@ export class Attack {
   /** Le coup avance ; renvoie les impacts qui tombent pendant ce pas : [{ hit, box }]. */
   step(dt, game) {
     const s = this.s, h = this.hero, t0 = this.t;
-    this.t += dt * s.speed;
+    const speed = s.speed * (h.skills?.has("elan") ? 1.2 : 1);
+    this.t += dt * speed;
     if (t0 < 0 && this.t >= 0) {
       // l'effet part sur l'image de la coupe ; le chevalier s'avance d'un pas
-      this.fx = createFx(s.mod, { x: h.x, y: h.y, flip: this.face < 0, seed: 1 + this.n });
-      game.addFx(this.fx, s.speed);
+      // la lame ardente teint les coupes de feu
+      const fire = h.skills?.has("lame-ardente") ? { palette: FIRE } : {};
+      this.fx = createFx(s.mod, { x: h.x, y: h.y, flip: this.face < 0, seed: 1 + this.n, ...fire });
+      game.addFx(this.fx, speed);
       game.emit("swing", { x: h.x, n: this.n });
       if (h.ground) h.vx = this.face * s.lunge;
     }
     const out = [];
     const hits = s.mod.act.hits ?? [];
-    for (; this.nextHit < hits.length && hits[this.nextHit].t <= this.t; this.nextHit++) out.push({ hit: hits[this.nextHit], box: this.box(), dmg: s.dmg });
+    for (; this.nextHit < hits.length && hits[this.nextHit].t <= this.t; this.nextHit++) {
+      const hit = hits[this.nextHit];
+      out.push({ box: this.box(), dmg: s.dmg, stop: hit.stop, shake: hit.shake, amp: hit.amp, push: hit.push, sword: true, stroke: this.n });
+    }
     if (this.t >= s.chain && this.queued && this.n < STROKES.length - 1) this.done = "chain";
     else if (this.t >= s.end) this.done = "end";
     return out;
@@ -58,5 +64,7 @@ export class Attack {
     return { ...q, weapon: "sword", two: false };
   }
 }
+
+const FIRE = ["#4a1712", "#8a1f17", "#c9281f", "#f2561d", "#ff8a2a", "#ffc23d", "#ffe26b", "#ffffff"];
 
 export const STROKE_COUNT = STROKES.length;
