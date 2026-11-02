@@ -13,6 +13,10 @@ const SCENARIOS = {
   run: [[0.5, ""], [0.8, "right"], [0.35, "right jump"], [0.8, "right"], [0.6, ""], [0.25, "jump"], [0.7, ""], [1.0, "right"], [0.4, "right jump"], [0.6, "right"]],
   // jusqu'au premier slime, un combo complet (trois appuis), puis la suite
   fight: [["at", 27, 9], [0.25, "right"], [0.05, "attack"], [0.1, ""], [0.05, "attack"], [0.12, ""], [0.05, "attack"], [1.2, ""], [0.05, "attack"], [0.1, ""], [0.05, "attack"], [0.12, ""], [0.05, "attack"], [1.0, ""]],
+  // tue le slime, ramasse ses braises, allume le brasero voisin
+  loot: [["at", 27, 9], [0.25, "right"], [0.05, "attack"], [0.1, ""], [0.05, "attack"], [0.9, ""], [0.5, "right"], [1.2, ""], ["at", 42, 9], [0.4, "right"], [0.3, "right jump"], [0.5, "right"], [1.0, ""]],
+  // allume un brasero éteint
+  fire: [["at", 43, 7], [0.2, ""], [0.25, "right"], [1.4, ""]],
   old: [[0.6, ""], [1.6, "right"], [0.5, "right jump"], [0.6, "right"], [0.4, "jump"], [0.8, ""], [1.2, "right"], [0.3, "right jump"], [0.9, "right"]],
 };
 const name = process.argv[2] ?? "run", plan = SCENARIOS[name];

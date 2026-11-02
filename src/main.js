@@ -38,6 +38,12 @@ addEventListener("resize", fit);
 fit();
 
 const game = createGame();
+// la partie se garde dans le navigateur à chaque brasero ; un stockage refusé n'empêche pas de jouer
+const SAVE = "brasier.save";
+try { game.load(JSON.parse(localStorage.getItem(SAVE))); } catch {}
+const store = () => { try { localStorage.setItem(SAVE, JSON.stringify(game.save())); } catch {} };
+game.onSave = store;
+addEventListener("visibilitychange", () => document.hidden && store());
 let last = performance.now();
 function tick(now) {
   const dt = Math.min(0.05, (now - last) / 1000);

@@ -76,8 +76,9 @@ export class Hero {
     if (this.y > level.pxH + 64) {
       const hp = this.hp - 1;
       this.reset();
-      this.hp = hp > 0 ? hp : MAX_HP;
+      this.hp = Math.max(0, hp); // à 0, le jeu le ramène au brasero comme pour une mort
       this.invuln = INVULN;
+      this.respawned = true;
     }
     return impacts;
   }

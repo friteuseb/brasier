@@ -16,6 +16,7 @@ export class Slime {
     this.y = y;
     this.dir = seed % 2 ? 1 : -1;
     this.hp = 3;
+    this.loot = 5; // les braises qu'il lâche
     this.hw = 11;
     this.hh = 18;
     this.kx = 0; // recul après un coup
