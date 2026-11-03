@@ -1,7 +1,8 @@
 // Les écrans hors du jeu : la carte du royaume (choisir un niveau) et le bilan de fin de niveau.
 // Ils se dessinent dans la même image que le jeu, en coordonnées d'écran.
 
-import { hex, mix, rand, painterFor } from "pixelfx";
+import { hex, mix, rand, painterFor, createFx } from "pixelfx";
+import * as firework from "pixelfx/fx/explosions/firework-burst";
 import { WORLD, place } from "./levels/index.js";
 
 const C = Object.fromEntries(
@@ -129,4 +130,41 @@ export function drawSummary(frame, stats, t) {
     p.text(v.toUpperCase(), W - 90, 70 + i * 16, C.text, { font: "frmini", align: "right" });
   });
   if (t > 1.5 && Math.floor(t * 2) % 2 === 0) p.text("X : CONTINUER", W / 2, H - 20, C.gold, { font: "frmini", align: "center" });
+}
+
+/** La fin du jeu : des feux d'artifice au-dessus du royaume, quelques phrases, le total des éclats. */
+export class Ending {
+  constructor(shards, shardsMax) {
+    Object.assign(this, { t: 0, shards, shardsMax, fx: [], next: 0.3, n: 0 });
+  }
+  update(dt) {
+    this.t += dt;
+    if ((this.next -= dt) <= 0) {
+      this.next = 0.7;
+      const k = this.n++;
+      const palettes = [["#4a1712", "#c9281f", "#ff8a2a", "#ffe26b", "#ffffff"], ["#1a1440", "#5a3aa8", "#a888f0", "#e8deff", "#ffffff"], ["#0f3d52", "#1fa8a8", "#4fe0c8", "#c8fff0", "#ffffff"]];
+      this.fx.push(createFx(firework, { x: 40 + rand(k, 0, 9) * 240, y: 50 + rand(k, 1, 9) * 50, palette: palettes[k % 3], seed: k + 1 }));
+    }
+    for (const f of this.fx) f.update(dt);
+    this.fx = this.fx.filter((f) => !f.done());
+  }
+  draw(frame) {
+    const { w: W, h: H, color, light } = frame;
+    color.fill(C.night);
+    light.fill(0);
+    for (const f of this.fx) f.draw(frame);
+    const p = painterFor(frame);
+    p.place(frame.ox, frame.oy);
+    const lines = [
+      [1.0, "LE DERNIER GRAND BRASIER BRÛLE", "fr", C.gold],
+      [2.2, "La Nuit recule sur le royaume.", "frmini", C.text],
+      [3.2, "Le Chevalier noir n'était que votre ombre.", "frmini", C.text],
+      [4.4, `Éclats de brasier : ${this.shards} / ${this.shardsMax}`, "frmini", C.dim],
+      [5.6, "Merci d'avoir joué.", "fr", C.text],
+    ];
+    lines.forEach(([at, text, font, c], i) => {
+      if (this.t > at) p.text(text.toUpperCase(), W / 2, 60 + i * 18, c, { font, align: "center", outline: C.ink, a: Math.min(1, (this.t - at) * 2) });
+    });
+    if (this.t > 6.5 && Math.floor(this.t * 2) % 2 === 0) p.text("X : LA CARTE DU ROYAUME", W / 2, H - 16, C.gold, { font: "frmini", align: "center" });
+  }
 }

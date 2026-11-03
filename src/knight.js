@@ -48,14 +48,15 @@ const RECOLOR = new Map(
     J: "#262033", m: "#ffd84a",
   }).map(([k, v]) => [hex(DUMMY_PAL[k]) >>> 0, hex(v) >>> 0]),
 );
-const knightColor = (c) => RECOLOR.get(c >>> 0) ?? c;
 
 const RUN_SPEED = 108, GRAV = 520, DRAG = 9;
 const CAPE = ["#3a0e1c", "#6a1426", "#9c1e2c", "#c8323a"].map((c) => hex(c));
 
 /** La cape : une corde de points qui pend du cou, traîne derrière la course et flotte en l'air. */
 export class Cape {
-  constructor() {
+  /** colors : quatre tons, du plus sombre au plus clair (la cape rouge du chevalier par défaut). */
+  constructor(colors = CAPE) {
+    this.colors = colors;
     this.pts = null;
     this.shown = null; // ce qu'on dessine : un relevé de la corde, renouvelé 12 fois par seconde
     this.hold = 0;
@@ -105,15 +106,17 @@ export class Cape {
     for (let i = 1; i < P.length; i++) {
       // étroite au col, plus large en bas ; le pli éclairé suit le haut du tissu
       const a = P[i - 1], b = P[i], w = 1.2 + i * 0.35;
-      p.beam(a.x, a.y, b.x, b.y, w + 0.8, CAPE[0]);
-      p.beam(a.x, a.y, b.x, b.y, w, i < 4 ? CAPE[2] : CAPE[1]);
-      if (i < 5) p.line(a.x, a.y - 0.5, b.x, b.y - 0.5, CAPE[3]);
+      const K = this.colors;
+      p.beam(a.x, a.y, b.x, b.y, w + 0.8, K[0]);
+      p.beam(a.x, a.y, b.x, b.y, w, i < 4 ? K[2] : K[1]);
+      if (i < 5) p.line(a.x, a.y - 0.5, b.x, b.y - 0.5, K[3]);
     }
   }
 }
 
 /** Peindre le chevalier dans une image, pieds en (x, y) dans le monde. */
-export function drawKnight(frame, h) {
+/** recolor : les tons du mannequin vers ceux de l'armure (celle du chevalier par défaut). */
+export function drawKnight(frame, h, recolor = RECOLOR) {
   // il clignote tant qu'il est protégé après un choc
   if (h.invuln > 0 && Math.floor(h.invuln * 14) % 2) return;
   const q = h.pose, r = posed(q), W = frame.w, H = frame.h, flip = h.face < 0;
@@ -122,7 +125,7 @@ export function drawKnight(frame, h) {
   for (let i = 0; i < r.n; i++) {
     const px = flip ? bx - r.xs[i] - 1 : bx + r.xs[i], py = by + r.ys[i];
     if (px < 0 || py < 0 || px >= W || py >= H) continue;
-    frame.color[py * W + px] = knightColor(r.color[i]);
+    frame.color[py * W + px] = recolor.get(r.color[i] >>> 0) ?? r.color[i];
   }
 }
 

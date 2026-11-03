@@ -8,7 +8,8 @@ import * as burnAway from "pixelfx/fx/transitions/burn-away";
 import "./font.js";
 import { Embers } from "./embers.js";
 import { FIRST, place } from "./levels/index.js";
-import { WorldMap, drawSummary } from "./screens.js";
+import { WorldMap, drawSummary, Ending } from "./screens.js";
+import { WORLD } from "./levels/index.js";
 import { Stage, FLAME } from "./stage.js";
 import { Hero, HW, HH } from "./hero.js";
 import { Cape, drawKnight } from "./knight.js";
@@ -19,6 +20,13 @@ import { Special } from "./specials.js";
 import { Altar } from "./altar.js";
 import { drawHud } from "./hud.js";
 import { Orb } from "./hostiles.js";
+import { DarkKnight } from "./boss.js";
+import * as darkExplosion from "pixelfx/fx/shadow/dark-explosion";
+
+// le nombre d'éclats dans tout le royaume : les « * » de toutes les cartes
+const SHARDS_MAX = WORLD.reduce((n, w) => n + (w.def ? w.def.rows.join("").split("*").length - 1 : 0), 0);
+// les ennemis par lettre de carte, et le gardien (Z)
+const FOES = { ...KINDS, Z: DarkKnight };
 
 export const W = 320, H = 180;
 const STEP = 1 / 120;
@@ -43,10 +51,11 @@ export function createGame() {
   // les effets ponctuels en cours ; speed fait jouer un effet plus vite
   let fxs = [], projectiles = [], later = [], orbs = [], shieldFx = null;
   // mode : "play", "summary" (bilan) ou "map" (carte du royaume) ; trans : la transition d'écran en cours
-  let mode = "play", altar = null, map = null, summaryT = 0, trans = null, prev = {};
+  let mode = "play", altar = null, map = null, summaryT = 0, trans = null, prev = {}, ending = null;
   const cam = { x: 0, y: 0, look: 0 };
   let acc = 0, freeze = 0, shakeT = 0, shake0 = 1, amp = 0;
-  const spawnEnemies = () => (enemies = level.foes.map(([ch, x, y], i) => new KINDS[ch](x, y, i + 1)));
+  // un gardien vaincu ne revient pas
+  const spawnEnemies = () => (enemies = level.foes.filter(([ch]) => ch !== "Z" || !progress[current].boss).map(([ch, x, y], i) => new FOES[ch](x, y, i + 1)));
 
   /** Entrer dans un niveau : au dernier brasero visité, ou au départ. */
   function enter(id) {
@@ -101,6 +110,15 @@ export function createGame() {
     game.emit("kill", { x: s.x });
     hero.ardor = Math.min(100, hero.ardor + ARDOR_KILL);
     stats.kills++;
+    if (s.boss) {
+      // le gardien tombe : une explosion d'ombre, une pluie de braises, et le Grand Brasier se laisse rallumer
+      progress[current].boss = true;
+      game.addFx(createFx(darkExplosion, { x: s.x, y: s.y, seed: 4 }));
+      game.shake(0.8, 4);
+      game.say(`${s.name} EST TOMBÉ`);
+      game.emit("boom", { x: s.x });
+      services.save();
+    }
   }
 
   // un impact : { box, dmg, stop, shake, amp, push, sword, stroke, crit, once, always, sound }
@@ -169,6 +187,8 @@ export function createGame() {
       game.say(total % 3 === 0 ? "UN CŒUR DE PLUS !" : `ÉCLAT DE BRASIER  ${total % 3} / 3`);
       services.save();
     },
+    /** Le Grand Brasier est-il encore gardé ? */
+    guarded: () => enemies.some((e) => e.boss && e.hp > 0),
     onLevelDone() {
       if (!trans && mode === "play") transition(() => { mode = "summary"; summaryT = 0; });
     },
@@ -229,7 +249,7 @@ export function createGame() {
       stage.tick(dt, hero, services);
       for (const s of enemies) {
         if (s.hp <= 0 || !near(s.x, s.y, 200)) continue;
-        s.step(dt, level, hero);
+        s.step(dt, level, hero, services);
         if (s.landed) game.emit("plop", { x: s.x });
         // les attaques des monstres s'entendent : plongeon, charge, morsure
         for (const [flag, sound] of [["swooped", "swoop"], ["charged", "charge"], ["struck", "lunge"]])
@@ -305,7 +325,15 @@ export function createGame() {
       toast.t = Math.max(0, toast.t - dt);
       if (mode === "summary") {
         summaryT += dt;
-        if (summaryT > 1.5 && !trans && (pressed.attack || pressed.confirm || pressed.jump)) transition(toMap);
+        // après la Citadelle, la fin du jeu ; sinon la carte
+        const last = current === WORLD[WORLD.length - 1].id;
+        if (summaryT > 1.5 && !trans && (pressed.attack || pressed.confirm || pressed.jump))
+          transition(last ? () => { mode = "ending"; ending = new Ending(shardTotal(), SHARDS_MAX); } : toMap);
+        return;
+      }
+      if (mode === "ending") {
+        ending.update(dt);
+        if (ending.t > 6.5 && !trans && (pressed.attack || pressed.confirm || pressed.jump)) transition(toMap);
         return;
       }
       if (mode === "map") {
@@ -375,6 +403,7 @@ export function createGame() {
       if (mode !== "play") {
         frame.ox = frame.oy = 0;
         if (mode === "summary") drawSummary(frame, stats, summaryT);
+        else if (mode === "ending") ending.draw(frame);
         else map.draw(frame, progress);
         drawTransition();
         return frame;
@@ -399,8 +428,9 @@ export function createGame() {
       stage.drawDark(frame, hero, merchants.map((m) => [m.x, m.y - 20, 70]));
       embers.draw(painterFor(frame), hero.time);
       const at = merchantHere();
-      const gate = !altar && stage.gateNear(hero);
-      drawHud(frame, { hp: hero.hp, maxHp: hero.maxHp, purse, toast, ardor: hero.ardor, equipped: skills.equipped, specials: [...skills.owned].filter((id) => node(id).ardor).length, altarHint: at && !altar ? [at.x, at.y] : null, gate });
+      const gate = !altar && !enemies.some((e) => e.boss && e.active) && stage.gateNear(hero);
+      const boss = enemies.find((e) => e.boss && e.active);
+      drawHud(frame, { boss: boss && { name: boss.name, hp: boss.hp, max: boss.max }, hp: hero.hp, maxHp: hero.maxHp, purse, toast, ardor: hero.ardor, equipped: skills.equipped, specials: [...skills.owned].filter((id) => node(id).ardor).length, altarHint: at && !altar ? [at.x, at.y] : null, gate });
       if (altar) altar.draw(frame, game);
       drawTransition();
       return frame;

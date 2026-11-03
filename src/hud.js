@@ -34,6 +34,15 @@ export function drawHud(frame, s) {
     p.text(`C : ${n.name}`, 62, y - 3, ready ? GOLD : DIM, { font: "frmini", outline: INK });
     if (s.specials > 1) p.text("V : CHANGER", 62, y + 5, DIM, { font: "frmini", outline: INK });
   }
+  // la barre de vie d'un gardien, en bas de l'écran
+  if (s.boss) {
+    const w = 200, x = (W - w) / 2, y = frame.h - 16, k = Math.max(0, s.boss.hp / s.boss.max);
+    p.text(s.boss.name, W / 2, y - 11, TEXT, { font: "frmini", align: "center", outline: INK });
+    p.rect(x - 1, y - 1, w + 2, 6, INK);
+    p.rect(x, y, w, 4, BAR[0]);
+    p.rect(x, y, Math.round(w * k), 4, hex("#8048b8"));
+    p.rect(x, y, Math.round(w * k), 1, hex("#c8a0f0"));
+  }
   if (s.toast.t > 0) p.text(s.toast.text, W / 2, 34, TEXT, { font: "fr", align: "center", outline: INK, a: Math.min(1, s.toast.t / 0.4) });
   if (s.altarHint) {
     const [x, y] = s.altarHint;

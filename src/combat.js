@@ -34,8 +34,8 @@ export class Attack {
     this.t += dt * speed;
     if (t0 < 0 && this.t >= 0) {
       // l'effet part sur l'image de la coupe ; le chevalier s'avance d'un pas
-      // la lame ardente teint les coupes de feu
-      const fire = h.skills?.has("lame-ardente") ? { palette: FIRE } : {};
+      // la lame ardente teint les coupes de feu ; un autre porteur (le Chevalier noir) peut avoir sa propre teinte
+      const fire = h.skills?.has("lame-ardente") ? { palette: FIRE } : h.slashPalette ? { palette: h.slashPalette } : {};
       this.fx = createFx(s.mod, { x: h.x, y: h.y, flip: this.face < 0, seed: 1 + this.n, ...fire });
       game.addFx(this.fx, speed);
       game.emit("swing", { x: h.x, n: this.n });

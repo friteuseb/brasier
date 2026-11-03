@@ -226,7 +226,11 @@ export class Stage {
     this.atFire = here;
     // le Grand Brasier : le rallumer termine le niveau ; le bilan suit 2,2 s plus tard
     const g = this.grand;
-    if (g && !g.used && Math.abs(hero.x - g.x) < 18 && Math.abs(hero.y - g.y) < 6) {
+    const atGrand = g && !g.used && Math.abs(hero.x - g.x) < 18 && Math.abs(hero.y - g.y) < 6;
+    // tant que son gardien vit, le Grand Brasier refuse de s'allumer
+    if (atGrand && game.guarded?.()) {
+      if (!g.warned) { g.warned = true; game.say("LE GARDIEN VEILLE SUR LE BRASIER"); }
+    } else if (atGrand) {
       g.used = true;
       if (!g.lit) light(g, true);
       game.addFx(createFx(flamePillar, { x: g.x, y: g.y - PED, seed: 4 }));

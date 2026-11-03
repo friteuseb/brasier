@@ -10,6 +10,7 @@
 //   w  eau profonde (on y nage)   y  geyser (il projette en l'air)   j  méduse (dans l'eau)
 //   L  cloche (accrochée au haut de sa case ; son onde de choc blesse)   v  feu follet
 //   H  mains d'ombre (elles jaillissent du sol et blessent)   Q  trou noir (il attire ; son cœur blesse)
+//   Z  le Chevalier noir, gardien du Grand Brasier (src/boss.js)
 
 export const TILE = 16;
 
@@ -44,7 +45,7 @@ export class Level {
         const cx = tx * TILE + TILE / 2, foot = (ty + 1) * TILE;
         if (ch === "B") this.braziers.push([cx, foot]);
         if (ch === "P") this.spawn = { x: cx, y: foot };
-        if ("Snf".includes(ch)) this.foes.push([ch, cx, foot]);
+        if ("SnfZ".includes(ch)) this.foes.push([ch, cx, foot]);
         if (ch === "p") this.poisons.push([cx, foot]);
         if (ch === "*") this.shards.push([cx, ty * TILE + TILE / 2]);
         if (ch === "c") this.crystals.push([cx, foot]);

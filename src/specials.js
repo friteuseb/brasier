@@ -20,7 +20,7 @@ import { knightActor } from "./knight.js";
 import { TILE } from "./level.js";
 
 const still = (q) => ({ ...q, x: 0, y: 0, ghost: q.ghost, weapon: "sword", two: false });
-const track = (mod, t) => still(poseAt(mod.act.poses, t));
+export const track = (mod, t) => still(poseAt(mod.act.poses, t));
 const around = (x, y, rx, up, down = 4) => ({ x0: x - rx, x1: x + rx, y0: y - up, y1: y + down });
 
 /** Le sol sous (x, y) : le haut de la première case pleine ou planche, sinon y. */
