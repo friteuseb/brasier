@@ -39,5 +39,10 @@ export function drawHud(frame, s) {
     const [x, y] = s.altarHint;
     p.text("C : BOUTIQUE", x - frame.ox, y - frame.oy - 74, TEXT, { font: "frmini", align: "center", outline: INK });
   }
+  if (s.gate) {
+    // l'indice d'un passage d'école, au-dessus de lui, gardé dans l'écran
+    const w = p.measure(s.gate.text, { font: "frmini" })[0], x = Math.max(w / 2 + 4, Math.min(W - w / 2 - 4, s.gate.x - frame.ox));
+    p.text(s.gate.text, x, Math.max(40, s.gate.y - frame.oy - 12), TEXT, { font: "frmini", align: "center", outline: INK });
+  }
   for (let i = 0; i < color.length; i++) if (color[i] !== before[i]) light[i] = 0;
 }

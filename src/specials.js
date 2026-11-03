@@ -130,7 +130,7 @@ const MOVES = {
         h.vy = 0;
         h.invuln = Math.max(h.invuln, 0.05);
         h.ghostly = true;
-        out.push({ box: around(h.x, h.y, 14, 36), dmg: 3, stop: 0.08, shake: 0.2, amp: 2, push: 3, crit: true, once: s.hit });
+        out.push({ box: around(h.x, h.y, 14, 36), dmg: 3, stop: 0.08, shake: 0.2, amp: 2, push: 3, crit: true, once: s.hit, smash: true });
       } else if (s.tau >= 0.16 && !s.slashed) {
         s.slashed = true;
         h.vx = h.face * 60;

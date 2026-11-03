@@ -6,8 +6,8 @@ export const BRANCHES = [
   {
     id: "flamme", name: "FLAMME", color: "#ff8a2a", dark: "#5a1c10",
     nodes: [
-      { id: "lame-ardente", name: "Lame ardente", cost: 5, desc: "Vos coups d'épée brûlent. Le troisième coup inflige 1 dégât de plus." },
-      { id: "boule-de-feu", name: "Boule de feu", cost: 10, ardor: 40, desc: "Lance une boule de feu qui explose au contact : 3 dégâts autour d'elle." },
+      { id: "lame-ardente", name: "Lame ardente", cost: 5, desc: "Vos coups d'épée brûlent, et les barricades avec. Le troisième coup inflige 1 dégât de plus." },
+      { id: "boule-de-feu", name: "Boule de feu", cost: 10, ardor: 40, desc: "Lance une boule de feu qui explose au contact : 3 dégâts autour d'elle. Brûle les barricades." },
       { id: "brulure", name: "Brûlure", cost: 15, desc: "Vos coups enflamment l'ennemi : 1 dégât par seconde pendant 3 secondes." },
       { id: "meteores", name: "Météore", cost: 25, ardor: 100, desc: "Appelle un météore devant vous : 6 dégâts sur une large zone." },
     ],
@@ -16,7 +16,7 @@ export const BRANCHES = [
     id: "serment", name: "SERMENT", color: "#ffe26b", dark: "#4a3a10",
     nodes: [
       { id: "coeur-vaillant", name: "Cœur vaillant", cost: 5, desc: "Un cœur de plus." },
-      { id: "chatiment", name: "Châtiment", cost: 10, ardor: 40, desc: "Un éclair de lumière frappe l'ennemi le plus proche devant vous : 4 dégâts." },
+      { id: "chatiment", name: "Châtiment", cost: 10, ardor: 40, desc: "Un éclair frappe l'ennemi le plus proche devant vous : 4 dégâts. Réveille les plateformes de lumière." },
       { id: "soin", name: "Prière", cost: 15, ardor: 60, desc: "Rend 2 cœurs." },
       { id: "bouclier", name: "Bouclier divin", cost: 25, ardor: 100, desc: "Six secondes intouchable. Les ennemis qui vous heurtent sont repoussés." },
     ],
@@ -25,9 +25,9 @@ export const BRANCHES = [
     id: "acier", name: "ACIER", color: "#a8c8ff", dark: "#1c2a4a",
     nodes: [
       { id: "elan", name: "Élan", cost: 5, desc: "Vous courez plus vite et vos coups d'épée s'enchaînent plus vite." },
-      { id: "ruee", name: "Ruée", cost: 10, ardor: 40, desc: "Une ruée intouchable sur six cases : 3 dégâts à tout ce qu'elle traverse." },
+      { id: "ruee", name: "Ruée", cost: 10, ardor: 40, desc: "Une ruée intouchable sur six cases : 3 dégâts à tout ce qu'elle traverse. Brise les murs fissurés." },
       { id: "critique", name: "Coup critique", cost: 15, desc: "Le troisième coup du combo inflige double dégât." },
-      { id: "seisme", name: "Séisme", cost: 25, ardor: 100, desc: "Bondit et frappe le sol : 5 dégâts à tout ce qui se tient près de vous." },
+      { id: "seisme", name: "Séisme", cost: 25, ardor: 100, desc: "Bondit et frappe le sol : 5 dégâts autour de vous. Brise les murs fissurés." },
     ],
   },
 ];

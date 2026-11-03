@@ -154,7 +154,7 @@ export function createGame() {
       game.addFx(createFx(crit ? critHit : hitSpark, { x: s.x, y: s.y, height: crit ? 14 : 10, flip: hero.x > s.x, seed: Math.floor(hero.time * 60) }));
       if (dead) kill(s);
     }
-    // les passages d'école : le feu brûle les barricades, le séisme brise les murs fissurés
+    // les passages d'école : le feu brûle les barricades ; la ruée et le séisme brisent les murs fissurés
     const fire = imp.fire || (imp.sword && skills.has("lame-ardente"));
     if (fire) for (const [x, y] of level.breakIn("%", imp.box)) {
       game.addFx(createFx(poof, { x, y: y + 8, seed: 5, palette: ["#1a0f0a", "#3a2418", "#6a4a30", "#9a7a58"] }), 1.2);
@@ -162,7 +162,7 @@ export function createGame() {
       game.emit("ignite", { x });
       touched = true;
     }
-    if (imp.quake) for (const [x, y] of level.breakIn("X", imp.box)) {
+    if (imp.quake || imp.smash) for (const [x, y] of level.breakIn("X", imp.box)) {
       game.addFx(createFx(poof, { x, y: y + 8, seed: 6, palette: ["#16131f", "#2c273d", "#4f4669", "#7b6f9c"] }), 1.2);
       game.emit("boom", { x });
       touched = true;
@@ -173,6 +173,23 @@ export function createGame() {
       game.shake(imp.shake ?? 0.12, imp.amp ?? 1);
       if (imp.sound) game.emit(imp.sound, { x: (imp.box.x0 + imp.box.x1) / 2 });
     }
+  }
+
+  // le passage d'école fermé le plus proche du chevalier, à moins de 3 cases : son indice s'affiche au-dessus
+  const GATE_HINTS = { "%": "LE FEU BRÛLE CETTE BARRICADE", X: "LA RUÉE OU LE SÉISME DE L'ACIER BRISENT CE MUR", "~": "UN SORT DU SERMENT RÉVEILLE CETTE LUMIÈRE" };
+  function gateNear() {
+    const tx0 = Math.floor(hero.x / 16), ty0 = Math.floor((hero.y - 16) / 16);
+    let best = null;
+    for (let ty = ty0 - 4; ty <= ty0 + 3; ty++)
+      for (let tx = tx0 - 3; tx <= tx0 + 3; tx++) {
+        const ch = level.at(tx, ty);
+        if (!GATE_HINTS[ch] || level.broken.has(`${tx},${ty}`) || (ch === "~" && level.lightOn)) continue;
+        const d = Math.abs(tx - tx0) + Math.abs(ty - ty0);
+        if (!best || d < best.d) best = { d, x: tx * 16 + 8, y: ty * 16, text: GATE_HINTS[ch] };
+      }
+    // on remonte au haut du passage, pour écrire au-dessus
+    while (best && GATE_HINTS[level.at(Math.floor(best.x / 16), Math.floor(best.y / 16) - 1)]) best.y -= 16;
+    return best;
   }
 
   // la transition se dessine par-dessus tout, à l'écran
@@ -477,7 +494,8 @@ export function createGame() {
       for (const p of poisons) if (near(p.x, p.y)) p.fx.draw(frame);
       embers.draw(painterFor(frame), hero.time);
       const at = merchantHere();
-      drawHud(frame, { hp: hero.hp, maxHp: hero.maxHp, purse, toast, ardor: hero.ardor, equipped: skills.equipped, specials: [...skills.owned].filter((id) => node(id).ardor).length, altarHint: at && !altar ? [at.x, at.y] : null });
+      const gate = !altar && gateNear();
+      drawHud(frame, { hp: hero.hp, maxHp: hero.maxHp, purse, toast, ardor: hero.ardor, equipped: skills.equipped, specials: [...skills.owned].filter((id) => node(id).ardor).length, altarHint: at && !altar ? [at.x, at.y] : null, gate });
       if (altar) altar.draw(frame, game);
       drawTransition();
       return frame;

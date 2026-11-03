@@ -32,6 +32,8 @@ const SCENARIOS = {
   foret: [["level", "foret"], [0.4, ""], [1.6, "right"], [0.35, "right jump"], [1.4, "right"], [0.3, "right jump"], [1.0, "right"]],
   // les passages d'école de la Forêt : la barricade, le poison, la grotte fissurée, les plateformes de lumière
   gates: [["level", "foret"], ["at", 31, 4], [0.5, ""], ["at", 40, 8], [0.5, ""], ["at", 67, 11], [0.5, ""], ["at", 84, 11], ["set", { oathT: 8 }], [0.5, ""]],
+  // le mur fissuré : l'indice, puis la ruée qui le brise et l'éclat ramassé
+  wall: [["level", "foret"], ["load", { v: 2, purse: 0, skills: { owned: ["ruee"], equipped: "ruee" }, progress: {}, current: "foret", where: "level" }], ["at", 66, 11], ["set", { ardor: 100 }], [0.3, "right"], [0.6, ""], [0.05, "special"], [0.8, ""], [0.5, "right"], [1.2, ""]],
   old: [[0.6, ""], [1.6, "right"], [0.5, "right jump"], [0.6, "right"], [0.4, "jump"], [0.8, ""], [1.2, "right"], [0.3, "right jump"], [0.9, "right"]],
 };
 // « special:<id> » : le chevalier connaît ce coup, a sa jauge pleine, et le lance face au slime de la colonne 31
