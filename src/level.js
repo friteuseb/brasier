@@ -8,6 +8,7 @@
 //   ~  plateforme de lumière (elle porte pendant 8 s après un sort du Serment)   *  éclat de brasier
 // Le décor et les pièges :   _  dalle qui s'effrite sous les pieds   c  cristal (une lumière dans le noir)   d  goutte
 //   w  eau profonde (on y nage)   y  geyser (il projette en l'air)   j  méduse (dans l'eau)
+//   L  cloche (accrochée au haut de sa case ; son onde de choc blesse)   v  feu follet
 
 export const TILE = 16;
 
@@ -33,6 +34,7 @@ export class Level {
     this.crystals = [];
     this.drips = [];
     this.geysers = [];
+    this.bells = [];
     this.spawn = { x: TILE, y: TILE };
     this.cells.forEach((row, ty) =>
       [...row].forEach((ch, tx) => {
@@ -46,7 +48,8 @@ export class Level {
         if (ch === "d") this.drips.push([cx, foot]);
         if (ch === "y") this.geysers.push([cx, foot]);
         if (ch === "j") this.foes.push([ch, cx, ty * TILE + TILE / 2]);
-        if ("bkge".includes(ch)) this.foes.push([ch, cx, ty * TILE + TILE / 2]);
+        if ("bkgev".includes(ch)) this.foes.push([ch, cx, ty * TILE + TILE / 2]);
+        if (ch === "L") this.bells.push([cx, ty * TILE]);
         // un marchand : [x, pieds, école du maître ou null]
         if ("MFAO".includes(ch)) this.merchants.push([cx, foot, { F: "flamme", A: "acier", O: "serment" }[ch] ?? null]);
         if (ch === "G") this.grand = [cx, foot];

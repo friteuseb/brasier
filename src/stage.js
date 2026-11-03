@@ -28,6 +28,8 @@ const LIT = brazier.meta.options.palette;
 // les cristaux des Mines : un violet froid, pour trancher sur le feu des braseros
 const CRYSTAL = ["#140a2e", "#2a1462", "#4a2aa0", "#7a52d8", "#a888f0", "#d8c8ff", "#f4eeff", "#ffffff"];
 const CRUMBLE = 0.5, BACK = 3.5; // une dalle tombe 0,5 s après qu'on s'y pose, et revient 3 s plus tard
+// les cloches : elles sonnent toutes les 4,5 s ; l'onde s'élargit de 18 à 90 px en 0,45 s et blesse au passage
+const BELL_PERIOD = 4.5, RING = 0.45, BELL = { body: hex("#c8963a"), light: hex("#f0cc6a"), dark: hex("#7a5420"), rope: hex("#5a4030"), wave: hex("#ffe9a0") };
 const WATER = { deep: hex("#16364a"), light: hex("#4a8ab0"), foam: hex("#c8e8f4") };
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
 const DARK = [0.1, 0.26, 0.48, 0.74, 1]; // les marches de l'obscurité, du noir à la pleine lumière
@@ -65,6 +67,7 @@ export class Stage {
     this.drips = level.drips.map(([x, y], i) => ({ x, y, fx: createFx(drip, { x, y, seed: i + 1, height: 70 }) }));
     // les geysers jaillissent toutes les 5,2 s, chacun décalé ; la colonne d'eau porte de 1,15 à 2,5 s de leur cycle
     this.geysers = level.geysers.map(([x, y], i) => ({ x, y, t: -i * 1.7, fx: null }));
+    this.bells = level.bells.map(([x, y], i) => ({ x, y, t: (i * 1.3) % BELL_PERIOD, hit: false }));
     this.falling = new Map(); // les dalles en route : "tx,ty" -> secondes depuis qu'on s'y est posé
   }
 
@@ -130,6 +133,16 @@ export class Stage {
       } else if (u >= BACK) {
         level.crumbled.delete(k);
         this.falling.delete(k);
+      }
+    }
+    // les cloches : l'onde de choc blesse quand elle passe sur le chevalier
+    for (const b of this.bells) {
+      const before = b.t;
+      b.t = (b.t + dt) % BELL_PERIOD;
+      if (b.t < before) { b.hit = false; game.emit("bell", { x: b.x }); }
+      if (b.t < RING && !b.hit) {
+        const r = 18 + (b.t / RING) * 72, d = Math.hypot(hero.x - b.x, hero.y - 16 - (b.y + 14));
+        if (Math.abs(d - r) < 10 && hero.hurt(b.x)) { b.hit = true; game.emit("hurt", { x: hero.x }); game.shake(0.2, 2); }
       }
     }
     // un geyser qui jaillit projette en l'air ce qui se tient au-dessus de lui
@@ -236,6 +249,7 @@ export class Stage {
     for (const p of this.poisons) if (near(p.x, p.y)) p.fx.draw(frame);
     for (const d of this.drips) if (near(d.x, d.y)) d.fx.draw(frame);
     for (const g of this.geysers) if (g.fx && near(g.x, g.y)) g.fx.draw(frame);
+    for (const b of this.bells) if (near(b.x, b.y)) drawBell(frame, b);
     this.drawWater(frame);
   }
 
@@ -287,6 +301,26 @@ export class Stage {
         const i = y * W + x, c = color[i], k = DARK[step];
         color[i] = rgb((c & 255) * k, ((c >>> 8) & 255) * k, ((c >>> 16) & 255) * k);
       }
+  }
+}
+
+// une cloche de bronze au bout de sa corde, qui se balance ; quand elle sonne, une onde dorée s'élargit
+function drawBell(frame, b) {
+  const p = painterFor(frame), swing = Math.sin((b.t / BELL_PERIOD) * Math.PI * 2) * (b.t < 1.2 ? 3 : 1.2);
+  p.rect(Math.round(b.x), b.y, 1, 6, BELL.rope);
+  for (let y = 0; y < 16; y++) {
+    // la cloche s'évase vers le bas ; elle penche avec son balancement
+    const half = y < 3 ? 3 : Math.min(9, 3 + (y - 3) * 0.6), cx = b.x + swing * (y / 16);
+    for (let x = -half; x <= half; x++) {
+      const c = y === 15 ? BELL.dark : x < -half + 2 ? BELL.light : x > half - 2 ? BELL.dark : BELL.body;
+      p.px(Math.round(cx + x), b.y + 6 + y, c);
+    }
+  }
+  p.glow(b.x, b.y + 14, 16, BELL.light, 0.15);
+  if (b.t < RING) {
+    const u = b.t / RING, r = 18 + u * 72;
+    p.ring(b.x, b.y + 14, r, 2, BELL.wave, 1 - u);
+    p.glowRing(b.x, b.y + 14, r, 4, BELL.wave, 0.5 * (1 - u));
   }
 }
 

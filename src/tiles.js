@@ -44,9 +44,36 @@ export function drawBackdrop(frame, cam, theme) {
   }
   // la lune, avec un croissant d'ombre
   if (theme.moon) moon(frame, cam);
-  const line = theme.skyline === "trees" ? treeline : theme.skyline === "cave" ? cavern : skyline;
+  const line = { trees: treeline, cave: cavern, nave }[theme.skyline] ?? skyline;
   line(frame, farX, 118 - yOff, 64, T.far, T.farLit, 7, false);
   line(frame, nearX, 140 - yOff, 92, T.near, T.nearEdge, 11, theme.windows);
+}
+
+// une nef : des piliers, et entre eux de hautes fenêtres en ogive garnies de vitraux (le plan proche seulement)
+const GLASS = ["#3e1420", "#141e40", "#4a3a18", "#12342a", "#2a1434"].map((c) => hex(c));
+function nave(frame, scroll, base, span, body, edge, seed, windows) {
+  const { w: W, h: H, color } = frame;
+  for (let x = 0; x < W; x++) {
+    const wx = x + Math.floor(scroll), lx = ((wx % span) + span) % span, pillar = lx < 10;
+    for (let y = 0; y < H; y++) {
+      let c = 0;
+      if (pillar) c = lx === 0 || lx === 9 ? edge : body;
+      else if (y > base) c = body;
+      else {
+        // l'ogive : un arc brisé au sommet de la fenêtre
+        const cx = 10 + (span - 10) / 2, half = (span - 10) / 2 - 6, dx = Math.abs(lx - cx), top = base - 96 + (dx * dx) / (half * 0.9);
+        if (dx < half && y > top && y < base - 16) {
+          if (!windows) c = edge;
+          else {
+            // le plomb trace un losange tous les 4 px ; chaque losange a sa couleur
+            const lead = (lx + y) % 6 === 0 || (lx - y + 600) % 6 === 0 || dx > half - 1 || y < top + 1;
+            c = lead ? body : GLASS[Math.floor(rand(Math.floor((lx + y) / 6), Math.floor((lx - y + 600) / 6), seed) * GLASS.length)];
+          }
+        }
+      }
+      if (c) color[y * W + x] = c;
+    }
+  }
 }
 
 // une caverne : des stalactites qui pendent du haut et des amas de roche en bas

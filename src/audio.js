@@ -48,6 +48,7 @@ const RECIPES = {
     { files: n5("impactPlate_heavy"), vol: 0.7, rate: 1.3 },
     { files: n5("impactPunch_heavy"), vol: 0.7 },
   ],
+  bell: [{ files: n5("impactBell_heavy"), vol: 0.55, rate: 0.8, vary: 0.03 }],
   // l'eau
   splash: [{ files: n5("impactSoft_heavy"), vol: 0.45, rate: 1.3 }],
   swim: [{ files: ["cloth1", "cloth2", "cloth3"], vol: 0.3, rate: 0.7 }],

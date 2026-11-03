@@ -11,6 +11,7 @@ import * as ghost from "pixelfx/fx/critters/ghost";
 import * as frog from "pixelfx/fx/critters/frog";
 import * as eyeball from "pixelfx/fx/critters/eyeball";
 import * as jellyfish from "pixelfx/fx/critters/jellyfish";
+import * as wisp from "pixelfx/fx/critters/wisp";
 import { TILE } from "./level.js";
 
 const TAU = Math.PI * 2, WHITE = rgb(255, 255, 255);
@@ -338,6 +339,50 @@ export class Jelly extends Enemy {
   }
 }
 
-/** Les ennemis par lettre de carte : S slime, b chauve-souris, k crâne de feu, n serpent, g fantôme, f grenouille, e œil volant, j méduse. */
-export const KINDS = { S: Slime, b: Bat, k: Skull, n: Snake, g: Ghost, f: Frog, e: Eye, j: Jelly };
+// ---- le feu follet : il flotte autour de son poste et fond sur le chevalier toutes les 2,8 s, puis revient.
+// Son animation décrit un huit de 34 px : on l'annule en x, comme pour la chauve-souris.
+const V_D = wisp.meta.duration, V_HOVER = 36;
+const wispAt = (t) => { const a = (t / V_D) * TAU; return { x: 34 * Math.sin(a), y: -10 * Math.sin(2 * a) }; };
+export class Wisp extends Enemy {
+  constructor(x, y, seed) {
+    super(wisp, x, y + V_HOVER, seed);
+    this.y = y;
+    Object.assign(this, { hp: 2, loot: 5, hw: 8, hh: 9, kind: "wisp", home: { x, y }, state: "float", st: seed * 0.7, vx: 0, vy: 0, stunTime: 0.3 });
+  }
+  step(dt, level, hero) {
+    this.tickTimers(dt);
+    this.fx.update(dt);
+    this.st += dt;
+    const hx = hero.x, hy = hero.y - 18;
+    if (this.stun > 0) {
+      if (this.state === "dash") Object.assign(this, { state: "back", st: 0 });
+    } else if (this.state === "float") {
+      this.x = this.home.x + Math.sin(this.st * 0.9) * 30;
+      this.y = this.home.y + Math.sin(this.st * 1.7) * 6;
+      if (this.st > 2.8 && Math.abs(hx - this.x) < 110 && Math.abs(hy - this.y) < 80) {
+        const d = Math.hypot(hx - this.x, hy - this.y) || 1;
+        Object.assign(this, { state: "dash", st: 0, vx: ((hx - this.x) / d) * 160, vy: ((hy - this.y) / d) * 160 });
+        this.swooped = true;
+      }
+    } else if (this.state === "dash") {
+      this.x += this.vx * dt;
+      this.y += this.vy * dt;
+      if (this.st > 0.5) Object.assign(this, { state: "back", st: 0 });
+    } else {
+      const dx = this.home.x - this.x, dy = this.home.y - this.y, d = Math.hypot(dx, dy);
+      if (d < 3) Object.assign(this, { state: "float", st: 0 });
+      else { this.x += (dx / d) * 45 * dt; this.y += (dy / d) * 45 * dt; }
+    }
+    this.knock(dt, level, false);
+    const o = wispAt(loopT(this.fx, V_D, this.seed));
+    this.fx.options.x = Math.round(this.x - o.x);
+    this.fx.options.y = Math.round(this.y) + V_HOVER;
+  }
+  box() {
+    return { x0: this.x - this.hw, x1: this.x + this.hw, y0: this.y - this.hh - 10, y1: this.y + this.hh };
+  }
+}
+
+/** Les ennemis par lettre de carte : S slime, b chauve-souris, k crâne de feu, n serpent, g fantôme, f grenouille, e œil volant, j méduse, v feu follet. */
+export const KINDS = { S: Slime, b: Bat, k: Skull, n: Snake, g: Ghost, f: Frog, e: Eye, j: Jelly, v: Wisp };
 export const overlaps = (a, b) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;
