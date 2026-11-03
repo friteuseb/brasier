@@ -2,7 +2,7 @@
 // nuages de poison, éclats de brasier, météo, indices des passages d'école, et le dessin du décor.
 // game.js crée une scène à chaque entrée dans un niveau et lui passe le chevalier et ses services (sons, effets...).
 
-import { createFx, painterFor, hex } from "pixelfx";
+import { createFx, painterFor, hex, rgb } from "pixelfx";
 import * as brazier from "pixelfx/fx/fire/brazier";
 import * as burst from "pixelfx/fx/pickups/collect-burst";
 import * as flamePillar from "pixelfx/fx/fire/flame-pillar";
@@ -11,6 +11,9 @@ import * as shardFx from "pixelfx/fx/pickups/crystal-shard";
 import * as fireflies from "pixelfx/fx/weather/fireflies";
 import * as leaves from "pixelfx/fx/weather/falling-leaves";
 import * as rain from "pixelfx/fx/weather/rain";
+import * as iceCrystal from "pixelfx/fx/ice/ice-crystal";
+import * as drip from "pixelfx/fx/water/drip";
+import * as poof from "pixelfx/fx/spawn/poof";
 import { Level } from "./level.js";
 import { HW, HH } from "./hero.js";
 import { overlaps } from "./enemies.js";
@@ -21,6 +24,11 @@ export const FLAME = ["#4a1712", "#c9281f", "#f2561d", "#ff8a2a", "#ffc23d", "#f
 // la météo d'un niveau : un effet pixelfx de la taille de l'écran, derrière le décor
 const WEATHER = { fireflies, leaves, rain };
 const LIT = brazier.meta.options.palette;
+// les cristaux des Mines : un violet froid, pour trancher sur le feu des braseros
+const CRYSTAL = ["#140a2e", "#2a1462", "#4a2aa0", "#7a52d8", "#a888f0", "#d8c8ff", "#f4eeff", "#ffffff"];
+const CRUMBLE = 0.5, BACK = 3.5; // une dalle tombe 0,5 s après qu'on s'y pose, et revient 3 s plus tard
+const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
+const DARK = [0.1, 0.26, 0.48, 0.74, 1]; // les marches de l'obscurité, du noir à la pleine lumière
 const PED = 18; // la hauteur du socle du Grand Brasier
 const GATE_HINTS = { "%": "LE FEU BRÛLE CETTE BARRICADE", X: "LA RUÉE OU LE SÉISME DE L'ACIER BRISENT CE MUR", "~": "UN SORT DU SERMENT RÉVEILLE CETTE LUMIÈRE" };
 
@@ -51,6 +59,9 @@ export class Stage {
     this.shards = level.shards.map(([x, y], i) => ({ x, y, i, got: pr.shards.includes(i), fx: createFx(shardFx, { x, y: y + 14, seed: i + 5 }) }));
     const w = WEATHER[level.theme.weather];
     this.weather = w && createFx(w, { seed: 3 });
+    this.crystals = level.crystals.map(([x, y], i) => ({ x, y, fx: createFx(iceCrystal, { x, y, seed: i + 21, palette: CRYSTAL, height: 20 }) }));
+    this.drips = level.drips.map(([x, y], i) => ({ x, y, fx: createFx(drip, { x, y, seed: i + 1, height: 70 }) }));
+    this.falling = new Map(); // les dalles en route : "tx,ty" -> secondes depuis qu'on s'y est posé
   }
 
   /** Où le chevalier reprend : le dernier brasero visité, ou le départ. */
@@ -78,6 +89,8 @@ export class Stage {
     for (const s of this.shards) if (!s.got && near(s.x, s.y)) s.fx.update(dt);
     if (this.grand && near(this.grand.x, this.grand.y)) this.grand.fx.update(dt);
     this.weather?.update(dt);
+    for (const c of this.crystals) if (near(c.x, c.y)) c.fx.update(dt);
+    for (const d of this.drips) if (near(d.x, d.y)) d.fx.update(dt);
   }
 
   /**
@@ -89,6 +102,27 @@ export class Stage {
     // les plateformes de lumière portent tant que dure la grâce du Serment
     level.lightOn = hero.oathT > 0 || hero.shieldT > 0;
     level.time = (level.time ?? 0) + dt;
+    // les dalles fragiles : sous les pieds, elles tremblent, tombent, puis reviennent
+    if (hero.ground)
+      for (const x of [hero.x - HW, hero.x + HW - 0.01]) {
+        const k = `${Math.floor(x / 16)},${Math.floor((hero.y + 1) / 16)}`;
+        if (level.at(Math.floor(x / 16), Math.floor((hero.y + 1) / 16)) === "_" && !this.falling.has(k)) this.falling.set(k, 0);
+      }
+    for (const [k, t] of this.falling) {
+      const u = t + dt, [tx, ty] = k.split(",").map(Number);
+      this.falling.set(k, u);
+      if (u < CRUMBLE) level.shaking.set(k, u);
+      else if (!level.crumbled.has(k) && u < BACK) {
+        level.shaking.delete(k);
+        level.crumbled.add(k);
+        const T = level.theme.stone;
+        game.addFx(createFx(poof, { x: tx * 16 + 8, y: ty * 16 + 6, seed: 4, palette: [T.shade, T.brickD, T.brick, T.edge] }), 1.4);
+        game.emit("crumble", { x: tx * 16 });
+      } else if (u >= BACK) {
+        level.crumbled.delete(k);
+        this.falling.delete(k);
+      }
+    }
     // le poison : une nappe au sol qui blesse qui la traverse
     for (const p of this.poisons)
       if (overlaps(me, { x0: p.x - 40, x1: p.x + 40, y0: p.y - 20, y1: p.y }) && hero.hurt(p.x)) {
@@ -176,13 +210,44 @@ export class Stage {
     }
     for (const f of this.fires) if (near(f.x, f.y)) f.fx.draw(frame, "back");
     drawTiles(frame, level);
+    for (const c of this.crystals) if (near(c.x, c.y)) c.fx.draw(frame);
     for (const f of this.fires) if (near(f.x, f.y)) f.fx.draw(frame, "front");
     for (const s of this.shards) if (!s.got && near(s.x, s.y)) s.fx.draw(frame);
     if (this.grand && near(this.grand.x, this.grand.y)) drawGrand(frame, this.grand, level.theme);
   }
-  // le décor devant les personnages : le poison
+  // le décor devant les personnages : le poison, les gouttes
   drawFront(frame, near) {
     for (const p of this.poisons) if (near(p.x, p.y)) p.fx.draw(frame);
+    for (const d of this.drips) if (near(d.x, d.y)) d.fx.draw(frame);
+  }
+
+  /**
+   * L'obscurité des Mines : chaque pixel s'assombrit selon la lumière la plus proche (le chevalier, les braseros
+   * allumés, les cristaux, les éclats, les marchands) en cinq marches tramées, comme un éclairage pixel art. Seule la
+   * couleur s'assombrit : la lueur des feux et des sorts (le tampon de lumière) reste entière.
+   */
+  drawDark(frame, hero, others = []) {
+    if (!this.level.theme.dark) return;
+    const L = [[hero.x, hero.y - 18, 96]];
+    for (const f of this.fires) L.push([f.x, f.y - 24, f.lit ? 120 : 44]);
+    if (this.grand) L.push([this.grand.x, this.grand.y - 30, this.grand.lit ? 170 : 60]);
+    for (const c of this.crystals) L.push([c.x, c.y - 20, 62]);
+    for (const s of this.shards) if (!s.got) L.push([s.x, s.y, 36]);
+    for (const [x, y, r] of others) L.push([x, y, r]);
+    const { w: W, h: H, color, ox, oy } = frame;
+    const lights = L.filter(([x, y, r]) => x + r > ox && x - r < ox + W && y + r > oy && y - r < oy + H);
+    for (let y = 0; y < H; y++)
+      for (let x = 0; x < W; x++) {
+        let f = 0;
+        for (const [lx, ly, r] of lights) {
+          const dx = x + ox - lx, dy = y + oy - ly, d2 = dx * dx + dy * dy;
+          if (d2 < r * r) f = Math.max(f, 1 - Math.sqrt(d2) / r);
+        }
+        const step = Math.min(4, Math.floor(f * 1.6 * 4 + BAYER[((y & 3) << 2) | (x & 3)]));
+        if (step === 4) continue;
+        const i = y * W + x, c = color[i], k = DARK[step];
+        color[i] = rgb((c & 255) * k, ((c >>> 8) & 255) * k, ((c >>> 16) & 255) * k);
+      }
   }
 }
 

@@ -1,11 +1,12 @@
 // Un niveau : une carte de caractères, des tuiles de 16 px.
 //   #  pierre (solide)      =  planche (on la traverse par-dessous)
 //   B  brasero posé au sol  P  départ du chevalier   G  Grand Brasier (la fin du niveau)
-//   M  marchand (l'arbre d'évolution)
-//   S  slime   b  chauve-souris   k  crâne de feu   n  serpent   g  fantôme   f  grenouille   p  nuage de poison
+//   M  marchand (l'arbre d'évolution)   F  maître de la Flamme   A  maître de l'Acier   O  maître du Serment
+//   S  slime   b  chauve-souris   k  crâne de feu   n  serpent   g  fantôme   f  grenouille   e  œil volant   p  nuage de poison
 // Les passages d'école : ils barrent un chemin tant que la bonne école ne les a pas ouverts.
 //   %  barricade de bois (la Flamme la brûle)   X  mur fissuré (le Séisme de l'Acier le brise)
 //   ~  plateforme de lumière (elle porte pendant 8 s après un sort du Serment)   *  éclat de brasier
+// Le décor et les pièges :   _  dalle qui s'effrite sous les pieds   c  cristal (une lumière dans le noir)   d  goutte
 
 export const TILE = 16;
 
@@ -26,6 +27,10 @@ export class Level {
     this.shards = [];
     this.broken = new Set(); // les barricades brûlées et les murs brisés, "tx,ty"
     this.lightOn = false; // les plateformes de lumière portent-elles ?
+    this.crumbled = new Set(); // les dalles tombées, "tx,ty" ; elles reviennent (src/stage.js)
+    this.shaking = new Map(); // les dalles qui tremblent avant de tomber : "tx,ty" -> secondes écoulées
+    this.crystals = [];
+    this.drips = [];
     this.spawn = { x: TILE, y: TILE };
     this.cells.forEach((row, ty) =>
       [...row].forEach((ch, tx) => {
@@ -35,8 +40,11 @@ export class Level {
         if ("Snf".includes(ch)) this.foes.push([ch, cx, foot]);
         if (ch === "p") this.poisons.push([cx, foot]);
         if (ch === "*") this.shards.push([cx, ty * TILE + TILE / 2]);
-        if ("bkg".includes(ch)) this.foes.push([ch, cx, ty * TILE + TILE / 2]);
-        if (ch === "M") this.merchants.push([cx, foot]);
+        if (ch === "c") this.crystals.push([cx, foot]);
+        if (ch === "d") this.drips.push([cx, foot]);
+        if ("bkge".includes(ch)) this.foes.push([ch, cx, ty * TILE + TILE / 2]);
+        // un marchand : [x, pieds, école du maître ou null]
+        if ("MFAO".includes(ch)) this.merchants.push([cx, foot, { F: "flamme", A: "acier", O: "serment" }[ch] ?? null]);
         if (ch === "G") this.grand = [cx, foot];
       }),
     );
@@ -55,7 +63,7 @@ export class Level {
   }
   oneWay(tx, ty) {
     const ch = this.at(tx, ty);
-    return ch === "=" || (ch === "~" && this.lightOn);
+    return ch === "=" || (ch === "~" && this.lightOn) || (ch === "_" && !this.crumbled.has(`${tx},${ty}`));
   }
   /** Ouvrir les passages d'un type ("%" ou "X") qui touchent une boîte du monde ; renvoie les cases ouvertes. */
   breakIn(kind, box) {

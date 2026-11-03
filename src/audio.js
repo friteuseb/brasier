@@ -48,6 +48,11 @@ const RECIPES = {
     { files: n5("impactPlate_heavy"), vol: 0.7, rate: 1.3 },
     { files: n5("impactPunch_heavy"), vol: 0.7 },
   ],
+  // une dalle qui tombe
+  crumble: [
+    { files: n5("impactSoft_heavy"), vol: 0.45, rate: 0.6 },
+    { files: n5("footstep_concrete"), vol: 0.5, rate: 0.7 },
+  ],
   // les attaques des monstres
   swoop: [
     { files: ["cloth1", "cloth3"], vol: 0.4, rate: 0.8 },

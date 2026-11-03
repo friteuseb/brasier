@@ -9,6 +9,7 @@ import * as skull from "pixelfx/fx/critters/flying-skull";
 import * as snake from "pixelfx/fx/critters/snake";
 import * as ghost from "pixelfx/fx/critters/ghost";
 import * as frog from "pixelfx/fx/critters/frog";
+import * as eyeball from "pixelfx/fx/critters/eyeball";
 import { TILE } from "./level.js";
 
 const TAU = Math.PI * 2, WHITE = rgb(255, 255, 255);
@@ -276,6 +277,37 @@ export class Frog extends Enemy {
   }
 }
 
-/** Les ennemis par lettre de carte : S slime, b chauve-souris, k crâne de feu, n serpent, g fantôme, f grenouille. */
-export const KINDS = { S: Slime, b: Bat, k: Skull, n: Snake, g: Ghost, f: Frog };
+// ---- l'œil volant : il garde ses distances (6 cases) un peu au-dessus du chevalier, et tire un orbe toutes les 2,6 s
+const E_HOVER = 48;
+export class Eye extends Enemy {
+  constructor(x, y, seed) {
+    super(eyeball, x, y + E_HOVER, seed);
+    this.y = y;
+    Object.assign(this, { hp: 3, loot: 6, hw: 11, hh: 11, kind: "eye", home: { x, y }, cool: 1.5 + (seed % 3) * 0.4, stunTime: 0.4 });
+  }
+  step(dt, level, hero) {
+    this.tickTimers(dt);
+    this.fx.update(dt);
+    const hx = hero.x, hy = hero.y - 18, d = Math.hypot(hx - this.x, hy - this.y);
+    if (this.stun <= 0) {
+      const [gx, gy] = d < 190 ? [hx - Math.sign(hx - this.x || 1) * 96, hy - 26] : [this.home.x, this.home.y];
+      const dx = gx - this.x, dy = gy - this.y, n = Math.hypot(dx, dy);
+      if (n > 2) { this.x += (dx / n) * 26 * dt; this.y += (dy / n) * 26 * dt; }
+      this.cool -= dt;
+      if (this.cool <= 0 && d < 190) {
+        this.cool = 2.6;
+        this.shot = { x: this.x, y: this.y, vx: ((hx - this.x) / d) * 95, vy: ((hy - this.y) / d) * 95 };
+      }
+    }
+    this.knock(dt, level, false);
+    this.fx.options.x = Math.round(this.x);
+    this.fx.options.y = Math.round(this.y) + E_HOVER;
+  }
+  box() {
+    return { x0: this.x - this.hw, x1: this.x + this.hw, y0: this.y - this.hh, y1: this.y + this.hh };
+  }
+}
+
+/** Les ennemis par lettre de carte : S slime, b chauve-souris, k crâne de feu, n serpent, g fantôme, f grenouille, e œil volant. */
+export const KINDS = { S: Slime, b: Bat, k: Skull, n: Snake, g: Ghost, f: Frog, e: Eye };
 export const overlaps = (a, b) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;

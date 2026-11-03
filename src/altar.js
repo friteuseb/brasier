@@ -7,11 +7,17 @@ import { BRANCHES, node } from "./skills.js";
 const C = Object.fromEntries(
   Object.entries({ ink: "#0d0a14", panel: "#1a1526", edge: "#3a3050", text: "#f4e6c8", dim: "#7a6e8a", lock: "#4a4258", gold: "#ffc23d", red: "#e0503e" }).map(([k, v]) => [k, hex(v)]),
 );
+// où trouver chaque maître
+const MASTER = { flamme: "de la Flamme (Mines de cristal)", acier: "de l'Acier (Marais noir)", serment: "du Serment (Cathédrale)" };
+// le nom de l'échoppe : chez un maître, son atelier
+const TITLES = { flamme: "LA FORGE DE LA FLAMME", acier: "LA SALLE D'ARMES", serment: "LE SANCTUAIRE DU SERMENT" };
 const GREETINGS = ["« Des braises ? Voyons ce qu'elles valent. »", "« Le feu, la foi ou l'acier, chevalier ? »", "« Approchez. Mes savoirs ont un prix. »"];
 const COLS = [55, 160, 265], BOX_W = 96, BOX_H = 20, TOP = 46, GAP = 25;
 
 export class Altar {
-  constructor() {
+  /** school : l'école du maître qu'on visite, ou null chez un marchand ordinaire. */
+  constructor(school = null) {
+    this.school = school;
     this.col = 0;
     this.row = 0;
     this.flash = 0; // l'éclat d'un achat
@@ -31,13 +37,16 @@ export class Altar {
       game.emit("tick");
     }
     if (pressed.attack || pressed.confirm) {
-      const n = BRANCHES[this.col].nodes[this.row], sk = game.skills, st = sk.state(n.id);
+      const n = BRANCHES[this.col].nodes[this.row], sk = game.skills, st = this.state(sk, BRANCHES[this.col], this.row, n.id);
       if (st === "owned") {
         if (n.ardor && sk.equipped !== n.id) {
           sk.equip(n.id);
           this.msg = `${n.name} équipé (V en jeu change de coup)`;
           game.emit("equip");
         }
+      } else if (st === "master") {
+        this.msg = `Seul le maître ${MASTER[BRANCHES[this.col].id]} l'enseigne`;
+        game.emit("deny");
       } else if (st === "locked") {
         this.msg = "Apprenez d'abord le palier précédent";
         game.emit("deny");
@@ -57,6 +66,12 @@ export class Altar {
     }
   }
 
+  // l'état d'un palier dans cette échoppe : les paliers 3 et 4 d'une école ne s'apprennent que chez son maître
+  state(sk, branch, tier, id) {
+    const st = sk.state(id);
+    return st !== "owned" && tier >= 2 && this.school !== branch.id ? "master" : st;
+  }
+
   update(dt) {
     this.flash = Math.max(0, this.flash - dt);
   }
@@ -70,24 +85,24 @@ export class Altar {
     }
     const p = painterFor(frame);
     p.place(frame.ox, frame.oy);
-    p.text("ÉCHOPPE DU MAGE", W / 2, 6, C.text, { font: "fr", align: "center", outline: C.ink });
+    p.text(TITLES[this.school] ?? "ÉCHOPPE DU MAGE", W / 2, 6, C.text, { font: "fr", align: "center", outline: C.ink });
     p.text(`${game.purse} BRAISES`, W - 8, 9, C.gold, { font: "frmini", align: "right", outline: C.ink });
     const sk = game.skills;
     BRANCHES.forEach((b, ci) => {
       const cx = COLS[ci], bc = hex(b.color), bd = hex(b.dark);
       p.text(b.name, cx, 26, bc, { font: "fr", align: "center", outline: C.ink });
       b.nodes.forEach((n, ri) => {
-        const x = cx - BOX_W / 2, y = TOP + ri * GAP, st = sk.state(n.id), sel = ci === this.col && ri === this.row;
+        const x = cx - BOX_W / 2, y = TOP + ri * GAP, st = this.state(sk, b, ri, n.id), sel = ci === this.col && ri === this.row;
         // le fil qui relie les paliers d'une voie
         if (ri > 0) p.rect(cx - 1, y - GAP + BOX_H, 2, GAP - BOX_H, st === "locked" ? C.lock : bc);
         const fill = st === "owned" ? bd : C.panel, edge = sel ? C.text : st === "owned" ? bc : st === "open" ? C.edge : C.lock;
         p.rect(x, y, BOX_W, BOX_H, edge);
         p.rect(x + 1, y + 1, BOX_W - 2, BOX_H - 2, fill);
         if (sel && this.flash > 0) p.rect(x + 1, y + 1, BOX_W - 2, BOX_H - 2, bc, this.flash * 1.6);
-        const tc = st === "locked" ? C.dim : C.text;
+        const tc = st === "locked" || st === "master" ? C.dim : C.text;
         p.text(n.name, x + 4, y + 2, tc, { font: "frmini" });
         // le prix, ou ce que c'est une fois appris
-        const tag = st === "owned" ? (n.ardor ? (sk.equipped === n.id ? "ÉQUIPÉ" : "SPÉCIAL") : "APPRIS") : `${n.cost} BRAISES`;
+        const tag = st === "owned" ? (n.ardor ? (sk.equipped === n.id ? "ÉQUIPÉ" : "SPÉCIAL") : "APPRIS") : st === "master" ? "CHEZ LE MAÎTRE" : `${n.cost} BRAISES`;
         const tagC = st === "owned" ? bc : game.purse >= n.cost && st === "open" ? C.gold : C.dim;
         p.text(tag, x + BOX_W - 4, y + 10, tagC, { font: "frmini", align: "right" });
         if (n.ardor) p.text(`${n.ardor}%`, x + 4, y + 10, st === "locked" ? C.lock : C.dim, { font: "frmini" });

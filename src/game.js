@@ -18,6 +18,7 @@ import { Skills, node } from "./skills.js";
 import { Special } from "./specials.js";
 import { Altar } from "./altar.js";
 import { drawHud } from "./hud.js";
+import { Orb } from "./hostiles.js";
 
 export const W = 320, H = 180;
 const STEP = 1 / 120;
@@ -40,7 +41,7 @@ export function createGame() {
   let stage, level, enemies, merchants, stats;
   const shardTotal = () => Object.values(progress).reduce((n, p) => n + (p.shards?.length ?? 0), 0);
   // les effets ponctuels en cours ; speed fait jouer un effet plus vite
-  let fxs = [], projectiles = [], later = [], shieldFx = null;
+  let fxs = [], projectiles = [], later = [], orbs = [], shieldFx = null;
   // mode : "play", "summary" (bilan) ou "map" (carte du royaume) ; trans : la transition d'écran en cours
   let mode = "play", altar = null, map = null, summaryT = 0, trans = null, prev = {};
   const cam = { x: 0, y: 0, look: 0 };
@@ -61,8 +62,8 @@ export function createGame() {
     hero.hp = hero.maxHp;
     hero.oathT = 0;
     spawnEnemies();
-    merchants = level.merchants.map(([x, y], i) => new Merchant(x, y, i + 1));
-    fxs = []; projectiles = []; later = []; shieldFx = null; embers.list = []; altar = null;
+    merchants = level.merchants.map(([x, y, school], i) => new Merchant(x, y, i + 1, school));
+    fxs = []; projectiles = []; later = []; orbs = []; shieldFx = null; embers.list = []; altar = null;
     cam.x = Math.max(0, Math.min(level.pxW - W, hero.x - W / 2));
     cam.y = Math.max(0, Math.min(level.pxH - H, hero.y - H * 0.62));
     stats = { name: node.name, embers: 0, kills: 0, foes: enemies.length, time: 0, shards: pr.shards.length, shardsMax: stage.shards.length };
@@ -105,6 +106,8 @@ export function createGame() {
   // un impact : { box, dmg, stop, shake, amp, push, sword, stroke, crit, once, always, sound }
   function strike(imp) {
     let touched = false;
+    // un coup d'épée pare les orbes des monstres
+    if (imp.sword) for (const o of orbs) if (!o.dead && overlaps(imp.box, o.box())) { o.dead = true; touched = true; game.addFx(createFx(hitSpark, { x: o.x, y: o.y + 6, height: 6, seed: 2 })); }
     for (const s of enemies) {
       if (s.hp <= 0 || !overlaps(imp.box, s.box()) || imp.once?.has(s)) continue;
       imp.once?.add(s);
@@ -231,6 +234,7 @@ export function createGame() {
         // les attaques des monstres s'entendent : plongeon, charge, morsure
         for (const [flag, sound] of [["swooped", "swoop"], ["charged", "charge"], ["struck", "lunge"]])
           if (s[flag]) { s[flag] = false; game.emit(sound, { x: s.x }); }
+        if (s.shot) { const o = s.shot; orbs.push(new Orb(o.x, o.y, o.vx, o.vy)); s.shot = null; game.emit("cast", { x: s.x }); }
         // la brûlure : 1 dégât par seconde, une flammèche à chaque fois
         if (s.burn > 0) {
           s.burn -= dt;
@@ -256,6 +260,12 @@ export function createGame() {
         }
       }
       enemies = enemies.filter((s) => s.hp > 0);
+      for (const o of orbs)
+        if (o.step(dt, level, hero) && hero.hurt(o.x)) {
+          game.emit("hurt", { x: hero.x });
+          game.shake(0.2, 2);
+        }
+      orbs = orbs.filter((o) => !o.dead);
       if (shieldFx) {
         shieldFx.options.x = hero.x;
         shieldFx.options.y = hero.y;
@@ -327,7 +337,7 @@ export function createGame() {
       // C : l'échoppe devant un marchand, sinon le coup spécial équipé
       if (pressed.special) {
         if (merchantHere() && !hero.busy) {
-          altar = new Altar();
+          altar = new Altar(merchantHere().school);
           game.emit("open");
           return;
         }
@@ -384,7 +394,9 @@ export function createGame() {
       shieldFx?.draw(frame, "front");
       for (const e of fxs) e.fx.draw(frame, "front");
       for (const p of projectiles) p.draw(frame);
+      for (const o of orbs) o.draw(painterFor(frame));
       stage.drawFront(frame, near);
+      stage.drawDark(frame, hero, merchants.map((m) => [m.x, m.y - 20, 70]));
       embers.draw(painterFor(frame), hero.time);
       const at = merchantHere();
       const gate = !altar && stage.gateNear(hero);

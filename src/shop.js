@@ -14,10 +14,15 @@ const C = Object.fromEntries(
 );
 const LAMP = hex("#ffcf80");
 // la robe : chaque ton du mannequin devient un violet de robe, un or de broderie ou une gemme
-const ROBE = new Map(
-  Object.entries({ A: "#e8d4ff", B: "#b896ec", C: "#8a68c4", D: "#5c4290", E: "#f0c860", F: "#b88a38", G: "#6e521c", J: "#2c1e48", m: "#7fe0ff" })
-    .map(([k, v]) => [hex(DUMMY_PAL[k]) >>> 0, hex(v) >>> 0]),
-);
+// la robe d'un maître prend la couleur de son école : rouge braise (Flamme), blanc et or (Serment), acier bleuté (Acier)
+const ROBES = {
+  mage: { A: "#e8d4ff", B: "#b896ec", C: "#8a68c4", D: "#5c4290", E: "#f0c860", F: "#b88a38", G: "#6e521c", J: "#2c1e48", m: "#7fe0ff" },
+  flamme: { A: "#ffd0a0", B: "#f0784a", C: "#b8402a", D: "#782018", E: "#ffc23d", F: "#c8861e", G: "#6a3a10", J: "#3a1008", m: "#fff3a6" },
+  serment: { A: "#ffffff", B: "#f0ecdc", C: "#c8c0a4", D: "#8a8068", E: "#ffd84a", F: "#c8a02a", G: "#6a5418", J: "#3a3020", m: "#ffe9a0" },
+  acier: { A: "#e6ecf6", B: "#9aaecc", C: "#5e7298", D: "#38466a", E: "#c8ccd8", F: "#8a90a0", G: "#4a4e5a", J: "#1e2433", m: "#a8c8ff" },
+};
+const recolor = (pal) => new Map(Object.entries(pal).map(([k, v]) => [hex(DUMMY_PAL[k]) >>> 0, hex(v) >>> 0]));
+const ROBE = Object.fromEntries(Object.entries(ROBES).map(([k, v]) => [k, recolor(v)]));
 
 // ses poses : les mains sur le comptoir, le bâton dressé ; il lève la main libre quand le chevalier arrive
 const STAFF = { ...READY, weapon: "spear", fx: 9, fy: -24, sa: -1.5, bx: 12, by: -17, crouch: 1 };
@@ -25,8 +30,10 @@ const WAVE = { ...STAFF, bx: 2, by: -36, turn: 1 };
 const W2 = { ...WAVE, bx: 5, by: -34 };
 
 export class Merchant {
-  constructor(x, y, seed) {
-    Object.assign(this, { x, y, face: -1, greet: 0, time: 0, near: false });
+  /** school : l'école dont il est le maître (paliers 3 et 4), ou null pour un marchand ordinaire. */
+  constructor(x, y, seed, school = null) {
+    Object.assign(this, { x, y, face: -1, greet: 0, time: 0, near: false, school });
+    this.robe = ROBE[school ?? "mage"];
     this.candle = createFx(candle, { x: x + 15, y: y - 10, seed });
   }
   /** Le chevalier est-il assez près pour marchander ? */
@@ -67,7 +74,7 @@ export class Merchant {
     for (let i = 0; i < r.n; i++) {
       const px = flip ? bx - r.xs[i] - 1 : bx + r.xs[i], py = by + r.ys[i];
       if (px < 0 || py < 0 || px >= W || py >= H) continue;
-      frame.color[py * W + px] = ROBE.get(r.color[i] >>> 0) ?? r.color[i];
+      frame.color[py * W + px] = this.robe.get(r.color[i] >>> 0) ?? r.color[i];
     }
   }
   drawFront(frame, p) {

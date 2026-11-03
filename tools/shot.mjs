@@ -34,6 +34,10 @@ const SCENARIOS = {
   gates: [["level", "foret"], ["at", 31, 4], [0.5, ""], ["at", 40, 8], [0.5, ""], ["at", 67, 11], [0.5, ""], ["at", 84, 11], ["set", { oathT: 8 }], [0.5, ""]],
   // le mur fissuré : l'indice, puis la ruée qui le brise et l'éclat ramassé
   wall: [["level", "foret"], ["load", { v: 2, purse: 0, skills: { owned: ["ruee"], equipped: "ruee" }, progress: {}, current: "foret", where: "level" }], ["at", 66, 11], ["set", { ardor: 100 }], [0.3, "right"], [0.6, ""], [0.05, "special"], [0.8, ""], [0.5, "right"], [1.2, ""]],
+  // les Mines : l'obscurité, le pont de dalles, l'œil qui tire
+  mines: [["level", "mines"], [0.3, ""], [1.4, "right"], [1.4, "right"], [0.3, ""], ["at", 64, 13], [2.0, ""]],
+  // la forge du maître de la Flamme, puis un marchand ordinaire (les paliers 3 et 4 renvoient aux maîtres)
+  forge: [["level", "mines"], ["at", 69, 13], [0.5, ""], [0.05, "special"], [0.6, ""], [0.05, "down"], [0.05, ""], [0.05, "down"], [0.4, ""], [0.05, "special"], [0.3, ""], ["level", "remparts"], ["at", 10, 9], [0.5, ""], [0.05, "special"], [0.3, ""], [0.05, "down"], [0.05, ""], [0.05, "down"], [0.05, ""], [0.05, "attack"], [0.4, ""]],
   old: [[0.6, ""], [1.6, "right"], [0.5, "right jump"], [0.6, "right"], [0.4, "jump"], [0.8, ""], [1.2, "right"], [0.3, "right jump"], [0.9, "right"]],
 };
 // « special:<id> » : le chevalier connaît ce coup, a sa jauge pleine, et le lance face au slime de la colonne 31

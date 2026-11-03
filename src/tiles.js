@@ -44,9 +44,23 @@ export function drawBackdrop(frame, cam, theme) {
   }
   // la lune, avec un croissant d'ombre
   if (theme.moon) moon(frame, cam);
-  const line = theme.skyline === "trees" ? treeline : skyline;
+  const line = theme.skyline === "trees" ? treeline : theme.skyline === "cave" ? cavern : skyline;
   line(frame, farX, 118 - yOff, 64, T.far, T.farLit, 7, false);
   line(frame, nearX, 140 - yOff, 92, T.near, T.nearEdge, 11, theme.windows);
+}
+
+// une caverne : des stalactites qui pendent du haut et des amas de roche en bas
+function cavern(frame, scroll, base, span, body, edge, seed) {
+  const { w: W, h: H, color } = frame;
+  for (let x = 0; x < W; x++) {
+    const wx = x + Math.floor(scroll), i = Math.floor(wx / 9), r = rand(i, 0, seed);
+    // le plafond : une dent de longueur variable tous les 9 px
+    const tooth = Math.max(0, 1 - Math.abs((wx % 9) - 4) / 4.5) * (10 + r * (base - 90));
+    const ceil = 8 + Math.sin(wx * 0.05 + seed) * 4 + tooth;
+    for (let y = 0; y < Math.min(H, ceil); y++) color[y * W + x] = y === Math.floor(ceil) - 1 ? edge : body;
+    const floor = base + 6 * Math.sin(wx * 0.04 + seed) + 8 * rand(Math.floor(wx / 23), 1, seed);
+    for (let y = Math.max(0, Math.floor(floor)); y < H; y++) color[y * W + x] = y === Math.floor(floor) ? edge : body;
+  }
 }
 
 // une lisière de sapins et d'arbres ronds, à la place des tours
@@ -135,6 +149,14 @@ function plank(x, y) {
   return 0;
 }
 
+// une dalle fragile : une pierre plate de 6 px, fendue en trois
+function slab(theme, x, y) {
+  const T = colors(theme);
+  if (y > 5) return 0;
+  if (y === 5) return T.shade;
+  if (x === 5 || x === 11) return T.mortar;
+  return y === 0 ? T.edge : y === 1 ? T.edgeD : y < 4 ? T.brick : T.brickD;
+}
 // une barricade : deux planches en croix sur trois planches debout, des clous
 function barricade(x, y) {
   if (Math.abs(x - y) <= 1 || Math.abs(x + y - 15) <= 1) return Math.abs(x - y) === 0 || x + y === 15 ? C.woodL : C.wood;
@@ -158,16 +180,18 @@ export function drawTiles(frame, level) {
   for (let ty = ty0; ty <= ty0 + Math.ceil(H / TILE); ty++)
     for (let tx = tx0; tx <= tx0 + Math.ceil(W / TILE); tx++) {
       const ch = level.at(tx, ty);
-      if (!"#=%X~".includes(ch) || level.broken.has(`${tx},${ty}`)) continue;
+      if (!"#=%X~_".includes(ch) || level.broken.has(`${tx},${ty}`) || level.crumbled.has(`${tx},${ty}`)) continue;
+      // une dalle qui va tomber tremble d'un pixel
+      const sh = ch === "_" && level.shaking.has(`${tx},${ty}`) ? (Math.floor(level.shaking.get(`${tx},${ty}`) * 30) % 2 ? 1 : -1) : 0;
       if (ch === "~" && !level.lightOn && Math.floor((level.time ?? 0) * 2.5) % 3) continue; // éteinte, elle se devine à peine
       const tile = ch === "#" || ch === "X" ? stoneTile(level, tx, ty) : null;
       for (let y = 0; y < TILE; y++) {
         const py = ty * TILE + y - oy;
         if (py < 0 || py >= H) continue;
         for (let x = 0; x < TILE; x++) {
-          const px = tx * TILE + x - ox;
+          const px = tx * TILE + x - ox + sh;
           if (px < 0 || px >= W) continue;
-          const c = ch === "%" ? barricade(x, y) : ch === "~" ? lightPlank(x, y, level.lightOn) : ch === "X" ? cracked(tile[y * TILE + x], x, y) : tile ? tile[y * TILE + x] : plank(x, y);
+          const c = ch === "_" ? slab(level.theme, x, y) : ch === "%" ? barricade(x, y) : ch === "~" ? lightPlank(x, y, level.lightOn) : ch === "X" ? cracked(tile[y * TILE + x], x, y) : tile ? tile[y * TILE + x] : plank(x, y);
           if (c) color[py * W + px] = c;
         }
       }
