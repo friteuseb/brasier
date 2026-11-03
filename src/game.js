@@ -1,6 +1,6 @@
 // Le jeu sans navigateur : un état, step(dt, keys) et draw(). main.js l'affiche, tools/shot.mjs le photographie.
 
-import { createFrame, createFx, painterFor, Rng } from "pixelfx";
+import { createFrame, createFx, painterFor, Rng, hex } from "pixelfx";
 import * as brazier from "pixelfx/fx/fire/brazier";
 import * as burst from "pixelfx/fx/pickups/collect-burst";
 import * as hitSpark from "pixelfx/fx/impacts/hit-spark";
@@ -8,7 +8,11 @@ import * as critHit from "pixelfx/fx/impacts/crit-hit";
 import * as poof from "pixelfx/fx/spawn/poof";
 import "./font.js";
 import { Embers } from "./embers.js";
-import { Level, LEVEL1 } from "./level.js";
+import { Level } from "./level.js";
+import { FIRST, place } from "./levels/index.js";
+import { WorldMap, drawSummary } from "./screens.js";
+import * as burnAway from "pixelfx/fx/transitions/burn-away";
+import * as flamePillar from "pixelfx/fx/fire/flame-pillar";
 import { Hero, HW, HH } from "./hero.js";
 import { Cape, drawKnight } from "./knight.js";
 import { KINDS, overlaps, GOO } from "./enemies.js";
@@ -21,43 +25,75 @@ import { drawHud } from "./hud.js";
 
 export const W = 320, H = 180;
 const STEP = 1 / 120;
-const SAVE_VERSION = 1; // à augmenter quand le niveau ou le format changent
+const SAVE_VERSION = 2; // à augmenter quand le format change ; load() reprend la version 1
 const COALS = ["#1a0806", "#2a0c0a", "#3e120e", "#561812", "#6e1e14", "#862a18", "#9a361c", "#ad4420", "#c05424"];
 const FLAME = ["#4a1712", "#c9281f", "#f2561d", "#ff8a2a", "#ffc23d", "#ffe26b", "#fff3a6", "#ffffff"];
 const KEYS = ["left", "right", "up", "down", "jump", "attack", "special", "cycle", "confirm", "back"];
 const ARDOR_HIT = 10, ARDOR_KILL = 20;
 
 export function createGame() {
-  const level = new Level(LEVEL1);
   const skills = new Skills();
-  const hero = new Hero(level.spawn.x, level.spawn.y, skills);
+  const hero = new Hero(0, 0, skills);
   const cape = new Cape();
   const frame = createFrame(W, H);
+  const embers = new Embers(), R = new Rng(7);
+  let purse = 0; // les braises ramassées
+  let streak = 0, streakT = 0; // les braises ramassées d'affilée font monter le tintement
+  const toast = { text: "", t: 0 };
+  // la progression : pour chaque niveau, terminé ou non, ses braseros allumés et le dernier visité
+  let progress = {}, current = FIRST;
+  // ce qui appartient au niveau en cours : enter() le refait
+  let level, fires, START, checkpoint, atFire, enemies, merchants, grand, stats;
+  // les effets ponctuels en cours ; speed fait jouer un effet plus vite
+  let fxs = [], projectiles = [], later = [], shieldFx = null;
+  // mode : "play", "summary" (bilan) ou "map" (carte du royaume) ; trans : la transition d'écran en cours
+  let mode = "play", altar = null, map = null, summaryT = 0, trans = null, prev = {};
+  const cam = { x: 0, y: 0, look: 0 };
+  let acc = 0, freeze = 0, shakeT = 0, shake0 = 1, amp = 0;
   // les braseros : éteints, ils couvent ; allumés, ils flambent et servent de point de reprise
-  const fires = level.braziers.map(([x, y], i) => ({ x, y, lit: false, fx: createFx(brazier, { x, y, seed: i + 1 }) }));
-  const LIT = fires[0].fx.options.palette;
+  const LIT = brazier.meta.options.palette;
   const light = (f, on) => {
     f.lit = on;
     f.fx.options.palette = on ? LIT : COALS;
     f.fx.options.light = on ? 1 : 0.3;
   };
-  // celui du départ brûle déjà : c'est le plus proche du point de départ
-  const START = fires.reduce((b, f, i) => (Math.hypot(f.x - level.spawn.x, f.y - level.spawn.y) < Math.hypot(fires[b].x - level.spawn.x, fires[b].y - level.spawn.y) ? i : b), 0);
-  fires.forEach((f, i) => light(f, i === START));
-  let checkpoint = START, atFire = -1; // atFire : le brasero où il se tient, -1 ailleurs
-  const embers = new Embers(), R = new Rng(7);
-  let purse = 0; // les braises ramassées
-  let streak = 0, streakT = 0; // les braises ramassées d'affilée font monter le tintement
-  const toast = { text: "", t: 0 };
-  let enemies = [];
   const spawnEnemies = () => (enemies = level.foes.map(([ch, x, y], i) => new KINDS[ch](x, y, i + 1)));
-  spawnEnemies();
-  const merchants = level.merchants.map(([x, y], i) => new Merchant(x, y, i + 1));
-  // les effets ponctuels en cours ; speed fait jouer un effet plus vite
-  let fxs = [], projectiles = [], later = [], shieldFx = null;
-  let altar = null, prev = {};
-  const cam = { x: 0, y: 0, look: 0 };
-  let acc = 0, freeze = 0, shakeT = 0, shake0 = 1, amp = 0;
+
+  /** Entrer dans un niveau : au dernier brasero visité, ou au départ. */
+  function enter(id) {
+    current = id;
+    const node = place(id), pr = (progress[id] ??= { done: false, lit: [], checkpoint: null });
+    level = new Level(node.def);
+    fires = level.braziers.map(([x, y], i) => ({ x, y, lit: false, fx: createFx(brazier, { x, y, seed: i + 1 }) }));
+    // celui du départ brûle déjà : c'est le plus proche du point de départ
+    const sp = level.spawn, dist = (f) => Math.hypot(f.x - sp.x, f.y - sp.y);
+    START = fires.length ? fires.reduce((b, f, i) => (dist(f) < dist(fires[b]) ? i : b), 0) : -1;
+    fires.forEach((f, i) => light(f, i === START || !!pr.lit[i]));
+    checkpoint = pr.checkpoint ?? START;
+    atFire = checkpoint;
+    const at = fires[checkpoint] ?? sp;
+    hero.spawnAt = { x: at.x, y: at.y };
+    hero.reset();
+    spawnEnemies();
+    merchants = level.merchants.map(([x, y], i) => new Merchant(x, y, i + 1));
+    grand = level.grand && { x: level.grand[0], y: level.grand[1], lit: false, used: false, t: 0, fx: createFx(brazier, { x: level.grand[0], y: level.grand[1] - PED, seed: 99 }) };
+    if (grand) light(grand, pr.done);
+    fxs = []; projectiles = []; later = []; shieldFx = null; embers.list = []; altar = null;
+    cam.x = Math.max(0, Math.min(level.pxW - W, hero.x - W / 2));
+    cam.y = Math.max(0, Math.min(level.pxH - H, hero.y - H * 0.62));
+    stats = { name: node.name, embers: 0, kills: 0, foes: enemies.length, time: 0 };
+    mode = "play";
+  }
+  /** Une transition d'écran : les flammes couvrent l'écran, then() change ce qu'il y a dessous, puis elles s'ouvrent. */
+  function transition(then) {
+    trans = { fx: createFx(burnAway, { seed: 3 }), t: 0, swapped: false, then };
+    game.emit("ignite");
+  }
+  function toMap() {
+    mode = "map";
+    map = new WorldMap(current);
+    game.onSave?.(game.save());
+  }
 
   const near = (x, y, m = 80) => x > cam.x - m && x < cam.x + W + m && y > cam.y - m && y < cam.y + H + m * 2;
   const merchantHere = () => merchants.find((m) => m.reach(hero));
@@ -79,6 +115,7 @@ export function createGame() {
     embers.burst(s.x, s.y - 8, s.loot, () => R.next());
     game.emit("kill", { x: s.x });
     hero.ardor = Math.min(100, hero.ardor + ARDOR_KILL);
+    stats.kills++;
   }
 
   // un impact : { box, dmg, stop, shake, amp, push, sword, stroke, crit, once, always, sound }
@@ -108,8 +145,19 @@ export function createGame() {
     }
   }
 
+  // la transition se dessine par-dessus tout, à l'écran
+  function drawTransition() {
+    if (!trans) return;
+    const [ox, oy] = burnAway.meta.origin;
+    trans.fx.options.x = frame.ox + ox;
+    trans.fx.options.y = frame.oy + oy;
+    trans.fx.draw(frame);
+  }
+
   const game = {
-    frame, hero, level, cam, skills,
+    frame, hero, cam, skills,
+    get level() { return level; },
+    get mode() { return mode; },
     // les événements de l'image (pour les sons) : { type, x, y, ... } ; main.js les lit après step()
     events: [],
     emit(type, e = {}) { game.events.push({ type, ...e }); },
@@ -117,7 +165,8 @@ export function createGame() {
     fireNear() {
       let k = 0;
       for (const f of fires) if (f.lit) k = Math.max(k, 1 - Math.hypot(f.x - hero.x, f.y - hero.y) / 140);
-      return altar ? k * 0.5 : Math.max(0, k);
+      if (grand?.lit) k = Math.max(k, 1 - Math.hypot(grand.x - hero.x, grand.y - hero.y) / 200);
+      return mode !== "play" ? 0 : altar ? k * 0.5 : Math.max(0, k);
     },
     get enemies() { return enemies; },
     get purse() { return purse; },
@@ -131,19 +180,21 @@ export function createGame() {
     addShield(fx) { shieldFx?.stop(); shieldFx = fx; },
     shake(t, a) { shakeT = shake0 = Math.max(shakeT, t); amp = Math.max(amp * (shakeT > 0 ? 1 : 0), a); },
 
-    /** Ce qu'on garde d'une partie à l'autre. */
-    save() { return { v: SAVE_VERSION, purse, lit: fires.map((f) => f.lit), checkpoint, skills: skills.toJSON() }; },
+    /** Ce qu'on garde d'une partie à l'autre : braises, arbre, progression, et où l'on en est. */
+    save() {
+      if (progress[current] && mode === "play") Object.assign(progress[current], { lit: fires.map((f) => f.lit), checkpoint });
+      return { v: SAVE_VERSION, purse, skills: skills.toJSON(), progress, current, where: mode === "map" ? "map" : "level" };
+    },
     load(s) {
-      // une sauvegarde d'une autre version du jeu est ignorée
-      if (!s || s.v !== SAVE_VERSION) return;
+      if (!s) return;
+      // la version 1 ne connaissait qu'un niveau, les Remparts
+      if (s.v === 1) s = { purse: s.purse, skills: s.skills, progress: { remparts: { done: false, lit: s.lit ?? [], checkpoint: s.checkpoint ?? null } }, current: "remparts", where: "level" };
+      else if (s.v !== SAVE_VERSION) return;
       purse = s.purse ?? 0;
       skills.load(s.skills);
-      fires.forEach((f, i) => light(f, !!s.lit?.[i] || i === START));
-      checkpoint = Math.min(fires.length - 1, s.checkpoint ?? START);
-      const f = fires[checkpoint];
-      hero.spawnAt = { x: f.x, y: f.y };
-      hero.reset();
-      atFire = checkpoint;
+      progress = s.progress ?? {};
+      if (s.where === "map") { current = place(s.current) ? s.current : FIRST; toMap(); }
+      else enter(place(s.current)?.def ? s.current : FIRST);
     },
 
     // un pas de 1/120 s : le chevalier, ses coups, les ennemis, les contacts
@@ -201,6 +252,7 @@ export function createGame() {
       streakT -= dt;
       if (streakT <= 0) streak = 0;
       purse += got;
+      stats.embers += got;
       // il réapparaît sur le brasero après une chute : ce n'est pas une visite, il ne regagne rien
       if (hero.respawned) {
         hero.respawned = false;
@@ -218,12 +270,26 @@ export function createGame() {
           game.say("BRASIER ALLUMÉ");
           game.emit("ignite", { x: f.x });
         }
+        progress[current].lit[here] = true;
         checkpoint = here;
         hero.spawnAt = { x: f.x, y: f.y };
         hero.hp = hero.maxHp;
         game.onSave?.(game.save());
       }
       atFire = here;
+      // le Grand Brasier : le rallumer termine le niveau ; le bilan suit 2,2 s plus tard
+      if (grand && !grand.used && Math.abs(hero.x - grand.x) < 18 && Math.abs(hero.y - grand.y) < 6) {
+        grand.used = true;
+        if (!grand.lit) light(grand, true);
+        game.addFx(createFx(flamePillar, { x: grand.x, y: grand.y - PED, seed: 4 }));
+        game.shake(0.6, 3);
+        game.say("GRAND BRASIER RALLUMÉ");
+        game.emit("ignite", { x: grand.x });
+        game.emit("boom", { x: grand.x });
+        progress[current].done = true;
+        game.onSave?.(game.save());
+      }
+      if (grand?.used && (grand.t += dt) >= 2.2 && !trans && mode === "play") transition(() => { mode = "summary"; summaryT = 0; });
       // plus de cœurs : retour au dernier brasero, les ennemis reviennent
       if (hero.dead) {
         hero.reset();
@@ -236,10 +302,31 @@ export function createGame() {
 
     step(dt, keys) {
       game.events.length = 0;
+      // pendant une transition, les touches ne comptent pas
+      if (trans) keys = {};
       const pressed = Object.fromEntries(KEYS.map((k) => [k, !!keys[k] && !prev[k]]));
       prev = { ...keys };
+      if (trans) {
+        trans.t += dt;
+        trans.fx.update(dt);
+        if (!trans.swapped && trans.t >= 1.4) { trans.swapped = true; trans.then(); }
+        if (trans.fx.done()) trans = null;
+      }
       toast.t = Math.max(0, toast.t - dt);
+      if (mode === "summary") {
+        summaryT += dt;
+        if (summaryT > 1.5 && !trans && (pressed.attack || pressed.confirm || pressed.jump)) transition(toMap);
+        return;
+      }
+      if (mode === "map") {
+        map.update(dt);
+        const id = trans ? null : map.input(pressed, progress, game.emit);
+        if (id) transition(() => enter(id));
+        return;
+      }
+      stats.time += dt;
       for (const f of fires) if (near(f.x, f.y)) f.fx.update(dt);
+      if (grand && near(grand.x, grand.y)) grand.fx.update(dt);
 
       // l'autel ouvert : le monde attend
       if (altar) {
@@ -294,14 +381,22 @@ export function createGame() {
     },
 
     draw() {
+      if (mode !== "play") {
+        frame.ox = frame.oy = 0;
+        if (mode === "summary") drawSummary(frame, stats, summaryT);
+        else map.draw(frame, progress);
+        drawTransition();
+        return frame;
+      }
       const k = shakeT > 0 ? amp * (shakeT / shake0) : 0, n = Math.floor(shakeT * 60);
       frame.ox = Math.round(cam.x + Math.sin(n * 2.4) * k);
       frame.oy = Math.round(cam.y + Math.cos(n * 3.7) * k * 0.7);
       frame.light.fill(0);
-      drawBackdrop(frame, cam);
+      drawBackdrop(frame, cam, level.theme);
       for (const f of fires) if (near(f.x, f.y)) f.fx.draw(frame, "back");
       drawTiles(frame, level);
       for (const f of fires) if (near(f.x, f.y)) f.fx.draw(frame, "front");
+      if (grand && near(grand.x, grand.y)) drawGrand(frame, grand, level.theme);
       const p = painterFor(frame);
       for (const m of merchants) if (near(m.x, m.y)) { m.drawBack(frame, p.place(0, 0)); m.drawMage(frame); m.drawFront(frame, painterFor(frame)); }
       for (const s of enemies) if (near(s.x, s.y)) s.draw(frame);
@@ -316,8 +411,23 @@ export function createGame() {
       const at = merchantHere();
       drawHud(frame, { hp: hero.hp, maxHp: hero.maxHp, purse, toast, ardor: hero.ardor, equipped: skills.equipped, specials: [...skills.owned].filter((id) => node(id).ardor).length, altarHint: at && !altar ? [at.x, at.y] : null });
       if (altar) altar.draw(frame, game);
+      drawTransition();
       return frame;
     },
   };
+  enter(FIRST);
   return game;
+}
+
+// le Grand Brasier : un socle de pierre de deux cases sous un brasero
+const PED = 18;
+function drawGrand(frame, g, theme) {
+  const p = painterFor(frame), s = theme.stone, x0 = Math.round(g.x) - 15, y = g.y;
+  p.rect(x0, y - PED, 30, PED, hex(s.brick));
+  p.rect(x0, y - PED, 30, 2, hex(s.edge));
+  p.rect(x0 + 2, y - PED + 2, 26, 1, hex(s.edgeD));
+  p.rect(x0 + 3, y - 9, 24, 1, hex(s.mortar));
+  p.rect(x0 + 14, y - PED + 3, 1, 6, hex(s.mortar));
+  p.rect(x0, y - 2, 30, 2, hex(s.brickD));
+  g.fx.draw(frame);
 }

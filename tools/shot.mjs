@@ -26,6 +26,8 @@ const SCENARIOS = {
   skull: [["at", 41, 8], [3.6, ""]],
   snake: [["at", 28, 9], [0.1, "right"], [2.4, ""]],
   ghost: [["at", 45, 7], [3.0, ""]],
+  // la fin des Remparts : le Grand Brasier, le bilan, la carte
+  end: [["at", 90, 9], [0.4, "right"], [5.8, ""], [0.05, "attack"], [3.2, ""], [0.05, "right"], [0.8, ""]],
   old: [[0.6, ""], [1.6, "right"], [0.5, "right jump"], [0.6, "right"], [0.4, "jump"], [0.8, ""], [1.2, "right"], [0.3, "right jump"], [0.9, "right"]],
 };
 // « special:<id> » : le chevalier connaît ce coup, a sa jauge pleine, et le lance face au slime de la colonne 31

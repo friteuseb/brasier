@@ -1,28 +1,18 @@
 // Un niveau : une carte de caractères, des tuiles de 16 px.
 //   #  pierre (solide)      =  planche (on la traverse par-dessous)
-//   B  brasero posé au sol  P  départ du chevalier
+//   B  brasero posé au sol  P  départ du chevalier   G  Grand Brasier (la fin du niveau)
 //   M  marchand (l'arbre d'évolution)
 //   S  slime   b  chauve-souris   k  crâne de feu   n  serpent   g  fantôme
 
 export const TILE = 16;
 
-export const LEVEL1 = [
-  "................................................................................................",
-  "................................................................................................",
-  "................................................................................................",
-  "...................................B.........................................k..................",
-  ".................................====........k..................................................",
-  "...................................................................................g......b.....",
-  "........................b.....B...........................b.......B...........B.................",
-  ".................B...........===............B.....g..............###.......S#####.===...........",
-  "...............#####.......................####..........................########...............",
-  ".P..B......M.#######.S.........n......S.#######......B...===....M...S.###########.......n...B...",
-  "#######...#############....#######....#########....####.......###################.....##########",
-  "#######...#############....#######....#########....####.......###################.....##########",
-];
 
 export class Level {
-  constructor(rows) {
+  constructor(def) {
+    const rows = def.rows;
+    this.def = def;
+    this.theme = def.theme;
+    this.grand = null;
     this.h = rows.length;
     this.w = Math.max(...rows.map((r) => r.length));
     this.cells = rows.map((r) => r.padEnd(this.w, "."));
@@ -38,6 +28,7 @@ export class Level {
         if ("Sn".includes(ch)) this.foes.push([ch, cx, foot]);
         if ("bkg".includes(ch)) this.foes.push([ch, cx, ty * TILE + TILE / 2]);
         if (ch === "M") this.merchants.push([cx, foot]);
+        if (ch === "G") this.grand = [cx, foot];
       }),
     );
     this.pxW = this.w * TILE;

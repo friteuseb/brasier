@@ -1,4 +1,5 @@
-// Le décor, dessiné en code comme les effets : un ciel de nuit, des remparts au loin, des blocs de pierre, des planches.
+// Le décor, dessiné en code comme les effets : un ciel, des silhouettes au loin, des blocs de pierre, des planches.
+// Les couleurs viennent du thème du niveau (src/levels/*.js) ; le bois et la lune sont communs.
 
 import { hex, mix, rand } from "pixelfx";
 import { TILE } from "./level.js";
@@ -6,13 +7,20 @@ import { TILE } from "./level.js";
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5];
 const C = Object.fromEntries(
   Object.entries({
-    skyTop: "#0b0a14", skyLow: "#2a2142", star: "#cfc8ff", moon: "#efe6c8", moonD: "#b9ab88",
-    far: "#1a1629", farLit: "#2a2440", near: "#120f1d", nearEdge: "#1f1a30", window: "#e8a83e", windowD: "#a0582a",
-    mortar: "#16131f", brick: "#3d3654", brickL: "#4f4669", brickD: "#2c273d", edge: "#7b6f9c", edgeD: "#5b5178", shade: "#1e1a2b",
-    moss: "#4f6b3a", mossL: "#7d9a4f",
+    star: "#cfc8ff", moon: "#efe6c8", moonD: "#b9ab88", window: "#e8a83e", windowD: "#a0582a",
     wood: "#8a5a32", woodL: "#b9884f", woodD: "#5a3820", woodK: "#2a1810",
   }).map(([k, v]) => [k, hex(v)]),
 );
+// le thème en couleurs prêtes à peindre, calculé une fois par thème
+const themes = new WeakMap();
+function colors(theme) {
+  let T = themes.get(theme);
+  if (T) return T;
+  const st = Object.fromEntries(Object.entries(theme.stone).map(([k, v]) => [k, hex(v)]));
+  T = { ...st, skyTop: hex(theme.sky[0]), skyLow: hex(theme.sky[1]), far: hex(theme.far[0]), farLit: hex(theme.far[1]), near: hex(theme.near[0]), nearEdge: hex(theme.near[1]), moss: theme.moss?.map(hex) };
+  themes.set(theme, T);
+  return T;
+}
 
 // ---- l'arrière-plan, en coordonnées d'écran, décalé par la caméra (parallaxe)
 const towerAt = (i, seed) => {
@@ -20,20 +28,27 @@ const towerAt = (i, seed) => {
   return { h: 40 + Math.floor(r * 50), w: 18 + Math.floor(rand(i, 1, seed) * 14), win: rand(i, 2, seed) > 0.45 };
 };
 
-export function drawBackdrop(frame, cam) {
-  const { w: W, h: H, color } = frame;
+export function drawBackdrop(frame, cam, theme) {
+  const { w: W, h: H, color } = frame, T = colors(theme);
   const farX = cam.x * 0.15, nearX = cam.x * 0.4, yOff = cam.y * 0.1;
   for (let y = 0; y < H; y++) {
     const t = y / H;
     for (let x = 0; x < W; x++) {
       const d = BAYER[((y & 3) << 2) | (x & 3)] / 16;
-      let c = mix(C.skyTop, C.skyLow, Math.min(1, Math.floor(t * 5 + d) / 4));
+      let c = mix(T.skyTop, T.skyLow, Math.min(1, Math.floor(t * 5 + d) / 4));
       const sx = Math.floor(x + cam.x * 0.03), r = rand(sx, y, 91);
-      if (r > 0.9965 && y < 110) c = mix(c, C.star, 0.3 + (r - 0.9965) * 200);
+      if (theme.stars && r > 0.9965 && y < 110) c = mix(c, C.star, 0.3 + (r - 0.9965) * 200);
       color[y * W + x] = c;
     }
   }
   // la lune, avec un croissant d'ombre
+  if (theme.moon) moon(frame, cam);
+  skyline(frame, farX, 118 - yOff, 64, T.far, T.farLit, 7, false);
+  skyline(frame, nearX, 140 - yOff, 92, T.near, T.nearEdge, 11, theme.windows);
+}
+
+function moon(frame, cam) {
+  const { w: W, color } = frame;
   const mx = 250 - Math.floor(cam.x * 0.02), my = 34;
   for (let y = -11; y <= 11; y++)
     for (let x = -11; x <= 11; x++) {
@@ -42,8 +57,6 @@ export function drawBackdrop(frame, cam) {
       const lit = (x + 4) * (x + 4) + (y - 3) * (y - 3) > 70 && x > 2;
       color[py * W + px] = lit || rand(x, y, 3) > 0.93 ? C.moonD : C.moon;
     }
-  skyline(frame, farX, 118 - yOff, 64, C.far, C.farLit, 7, false);
-  skyline(frame, nearX, 140 - yOff, 92, C.near, C.nearEdge, 11, true);
 }
 
 // une rangée de tours crénelées ; les plus proches ont des fenêtres éclairées
@@ -69,9 +82,9 @@ function skyline(frame, scroll, base, span, body, edge, seed, windows) {
 // ---- les tuiles, en coordonnées du monde
 const stoneCache = new Map();
 function stoneTile(level, tx, ty) {
-  const open = (dx, dy) => !level.solid(tx + dx, ty + dy);
+  const C = colors(level.theme), open = (dx, dy) => !level.solid(tx + dx, ty + dy);
   const up = open(0, -1), left = open(-1, 0), right = open(1, 0), down = open(0, 1);
-  const key = `${up}${left}${right}${down}${(tx * 7 + ty * 3) & 3}`;
+  const key = `${level.def.id}${up}${left}${right}${down}${(tx * 7 + ty * 3) & 3}`;
   let t = stoneCache.get(key);
   if (t) return t;
   t = new Uint32Array(TILE * TILE);
@@ -86,7 +99,7 @@ function stoneTile(level, tx, ty) {
       if (down && y === 15) c = C.mortar;
       if (up && y === 0) c = C.edge;
       else if (up && y === 1) c = C.edgeD;
-      else if (up && y === 2 && rand(x, v, 9) > 0.55) c = rand(x, v, 4) > 0.5 ? C.moss : C.mossL;
+      else if (up && y === 2 && C.moss && rand(x, v, 9) > 0.55) c = C.moss[rand(x, v, 4) > 0.5 ? 0 : 1];
       t[y * TILE + x] = c;
     }
   stoneCache.set(key, t);

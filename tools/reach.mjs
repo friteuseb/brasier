@@ -1,12 +1,17 @@
 // Vérifie qu'un niveau se traverse : depuis chaque case où le chevalier tient debout, on simule avec sa vraie
 // physique des sauts (élan ou non, appui court ou long, vers la gauche ou la droite) et des chutes depuis les bords.
 // On cherche ensuite si le bout du niveau est atteignable depuis le départ.
-// node tools/reach.mjs   (sort en erreur si la fin est hors d'atteinte)
+// node tools/reach.mjs [niveau]   (tous les niveaux construits sans argument ; sort en erreur si un Grand Brasier
+// est hors d'atteinte)
 
-import { Level, LEVEL1, TILE } from "../src/level.js";
+import { Level, TILE } from "../src/level.js";
 import { Hero } from "../src/hero.js";
+import { WORLD } from "../src/levels/index.js";
 
-const level = new Level(LEVEL1);
+let failed = false;
+for (const node of WORLD.filter((n) => n.def && (!process.argv[2] || n.id === process.argv[2]))) {
+console.log(`\n== ${node.name}`);
+const level = new Level(node.def);
 const standable = (tx, ty) => !level.solid(tx, ty) && !level.solid(tx, ty - 1) && (level.solid(tx, ty + 1) || level.oneWay(tx, ty + 1));
 const key = (tx, ty) => `${tx},${ty}`;
 
@@ -60,7 +65,9 @@ while (queue.length) for (const n of edges.get(queue.shift()) ?? []) if (!seen.h
 // la carte : o atteint, x jamais atteint
 const rows = level.cells.map((r, ty) => [...r].map((c, tx) => (standable(tx, ty) ? (seen.has(key(tx, ty)) ? "o" : "x") : c)).join(""));
 console.log(rows.join("\n"));
-const far = Math.max(...[...seen].map((k) => Number(k.split(",")[0])));
 const unreached = [...edges.keys()].filter((k) => !seen.has(k));
-console.log(`\nplus loin atteint : colonne ${far} / ${level.w - 1}   cases jamais atteintes : ${unreached.length}`);
-if (far < level.w - 2) process.exit(1);
+const [gx, gy] = level.grand ?? [0, 0], goal = level.grand && seen.has(key(Math.floor(gx / TILE), gy / TILE - 1));
+console.log(`Grand Brasier ${goal ? "atteint" : "HORS D'ATTEINTE"}   cases jamais atteintes : ${unreached.length}`);
+if (!goal) failed = true;
+}
+if (failed) process.exit(1);
