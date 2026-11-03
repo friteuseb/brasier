@@ -2,16 +2,48 @@
 <html lang="fr">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="theme-color" content="#07060b">
   <title>Brasier</title>
   <style>
     html, body { margin: 0; height: 100%; background: #07060b; }
-    body { display: grid; place-items: center; overflow: hidden; }
+    body { display: grid; place-items: center; overflow: hidden; touch-action: none; -webkit-user-select: none; user-select: none; -webkit-touch-callout: none; }
     canvas { image-rendering: pixelated; display: block; }
+
+    /* les commandes tactiles (src/touch.js), seulement sur un écran tactile */
+    #pad { position: fixed; inset: 0; pointer-events: none; font: 700 13px/1 system-ui, sans-serif; }
+    #pad button { pointer-events: auto; position: absolute; border: 2px solid rgba(255, 230, 190, 0.35); background: rgba(20, 14, 28, 0.45);
+      color: rgba(255, 236, 205, 0.85); border-radius: 50%; touch-action: none; -webkit-tap-highlight-color: transparent; padding: 0; }
+    #pad button.on { background: rgba(255, 160, 60, 0.45); border-color: rgba(255, 200, 120, 0.8); }
+    #pad .side { position: absolute; bottom: max(14px, env(safe-area-inset-bottom)); width: 190px; height: 170px; }
+    #pad .left { left: max(14px, env(safe-area-inset-left)); }
+    #pad .right { right: max(14px, env(safe-area-inset-right)); }
+    #pad .dir { width: 72px; height: 72px; bottom: 0; font-size: 24px; }
+    #pad .dir.l { left: 0; }
+    #pad .dir.r { left: 84px; }
+    #pad .small { width: 44px; height: 44px; font-size: 15px; }
+    #pad .left .u { left: 14px; bottom: 112px; }
+    #pad .left .d { left: 98px; bottom: 112px; }
+    #pad .act { width: 70px; height: 70px; }
+    #pad .jump { right: 0; bottom: 0; }
+    #pad .sword { right: 82px; bottom: 26px; }
+    #pad .spell { right: 26px; bottom: 90px; }
+    #pad .right .cycle { right: 112px; bottom: 112px; }
+    #pad .top { position: absolute; top: max(10px, env(safe-area-inset-top)); right: max(14px, env(safe-area-inset-right)); width: 110px; height: 50px; }
+    #pad .top .mute { right: 56px; top: 0; font-size: 10px; }
+    #pad .top .full { right: 0; top: 0; }
+
+    /* en portrait, on demande de tourner le téléphone */
+    #rotate { display: none; position: fixed; inset: 0; background: #07060b; color: #f4e6c8; font: 600 18px/1.5 system-ui, sans-serif;
+      place-items: center; text-align: center; padding: 24px; }
+    @media (orientation: portrait) and (pointer: coarse) { #rotate { display: grid; } }
   </style>
 </head>
 <body>
   <canvas></canvas>
+  <div id="rotate"><div>⟲<br>Tournez votre téléphone<br>pour jouer en paysage.</div></div>
   <script type="module" src="main.js"></script>
 </body>
 </html>

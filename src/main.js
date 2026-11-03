@@ -3,6 +3,7 @@
 import { composite } from "pixelfx";
 import { createGame, W, H } from "./game.js";
 import * as audio from "./audio.js";
+import { setupTouch } from "./touch.js";
 
 const canvas = document.querySelector("canvas");
 const ctx = canvas.getContext("2d");
@@ -10,16 +11,16 @@ canvas.width = W;
 canvas.height = H;
 const img = new ImageData(W, H);
 
-// QWERTY et AZERTY : flèches, WASD ou ZQSD
+// QWERTY et AZERTY : flèches, WASD ou ZQSD ; « Touch:… » sont les boutons tactiles (src/touch.js)
 const KEYS = {
-  left: ["ArrowLeft", "KeyA", "KeyQ"],
-  right: ["ArrowRight", "KeyD"],
-  jump: ["Space", "ArrowUp", "KeyW", "KeyZ"],
-  attack: ["KeyX", "KeyJ"],
-  special: ["KeyC", "KeyK"],
-  cycle: ["KeyV", "KeyL"],
-  up: ["ArrowUp", "KeyW", "KeyZ"],
-  down: ["ArrowDown", "KeyS"],
+  left: ["ArrowLeft", "KeyA", "KeyQ", "Touch:left"],
+  right: ["ArrowRight", "KeyD", "Touch:right"],
+  jump: ["Space", "ArrowUp", "KeyW", "KeyZ", "Touch:jump"],
+  attack: ["KeyX", "KeyJ", "Touch:attack"],
+  special: ["KeyC", "KeyK", "Touch:special"],
+  cycle: ["KeyV", "KeyL", "Touch:cycle"],
+  up: ["ArrowUp", "KeyW", "KeyZ", "Touch:up"],
+  down: ["ArrowDown", "KeyS", "Touch:down"],
   confirm: ["Enter"],
   back: ["Escape"],
 };
@@ -37,10 +38,17 @@ addEventListener("keydown", (e) => {
   sync();
 });
 addEventListener("keyup", (e) => { down.delete(e.code); sync(); });
+setupTouch({
+  press: (code) => { down.add(code); tapped.add(code); sync(); },
+  release: (code) => { down.delete(code); sync(); },
+  onFirst: () => audio.unlock(),
+  onMute: () => game.say(audio.toggleMute() ? "SON COUPÉ" : "SON RÉTABLI"),
+});
 addEventListener("blur", () => { down.clear(); sync(); });
 
+// agrandi au pixel près ; sur un petit écran (moins de 2 fois), on remplit quand même l'espace
 function fit() {
-  const k = Math.max(1, Math.floor(Math.min(innerWidth / W, innerHeight / H)));
+  const free = Math.min(innerWidth / W, innerHeight / H), k = free >= 2 ? Math.floor(free) : Math.max(1, free);
   canvas.style.width = `${W * k}px`;
   canvas.style.height = `${H * k}px`;
 }
