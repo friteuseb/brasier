@@ -15,6 +15,10 @@ import * as iceCrystal from "pixelfx/fx/ice/ice-crystal";
 import * as drip from "pixelfx/fx/water/drip";
 import * as poof from "pixelfx/fx/spawn/poof";
 import * as geyser from "pixelfx/fx/water/geyser";
+import * as storm from "pixelfx/fx/weather/storm";
+import * as eclipse from "pixelfx/fx/shadow/eclipse";
+import * as graspingHands from "pixelfx/fx/shadow/grasping-hands";
+import * as blackHole from "pixelfx/fx/shadow/black-hole";
 import { Level } from "./level.js";
 import { HW, HH } from "./hero.js";
 import { overlaps } from "./enemies.js";
@@ -23,7 +27,7 @@ import { drawBackdrop, drawTiles } from "./tiles.js";
 export const COALS = ["#1a0806", "#2a0c0a", "#3e120e", "#561812", "#6e1e14", "#862a18", "#9a361c", "#ad4420", "#c05424"];
 export const FLAME = ["#4a1712", "#c9281f", "#f2561d", "#ff8a2a", "#ffc23d", "#ffe26b", "#fff3a6", "#ffffff"];
 // la météo d'un niveau : un effet pixelfx de la taille de l'écran, derrière le décor
-const WEATHER = { fireflies, leaves, rain };
+const WEATHER = { fireflies, leaves, rain, storm };
 const LIT = brazier.meta.options.palette;
 // les cristaux des Mines : un violet froid, pour trancher sur le feu des braseros
 const CRYSTAL = ["#140a2e", "#2a1462", "#4a2aa0", "#7a52d8", "#a888f0", "#d8c8ff", "#f4eeff", "#ffffff"];
@@ -68,6 +72,12 @@ export class Stage {
     // les geysers jaillissent toutes les 5,2 s, chacun décalé ; la colonne d'eau porte de 1,15 à 2,5 s de leur cycle
     this.geysers = level.geysers.map(([x, y], i) => ({ x, y, t: -i * 1.7, fx: null }));
     this.bells = level.bells.map(([x, y], i) => ({ x, y, t: (i * 1.3) % BELL_PERIOD, hit: false }));
+    // les mains d'ombre jaillissent toutes les 3,6 s (décalées) ; elles blessent de 0,35 à 2 s de leur cycle
+    this.hands = level.hands.map(([x, y], i) => ({ x, y, t: -i * 0.9, fx: null }));
+    // les trous noirs tournent sur place ; leur origine pixelfx est sous le disque, à 30 px du centre
+    this.holes = level.holes.map(([x, y], i) => ({ x, y, fx: createFx(blackHole, { x, y: y + 30, seed: i + 4 }) }));
+    // l'éclipse : un astre fixe dans le ciel, qui ne bouge presque pas avec la caméra
+    this.sky = level.theme.celestial === "eclipse" && createFx(eclipse, { seed: 3 });
     this.falling = new Map(); // les dalles en route : "tx,ty" -> secondes depuis qu'on s'y est posé
   }
 
@@ -98,6 +108,13 @@ export class Stage {
     this.weather?.update(dt);
     for (const c of this.crystals) if (near(c.x, c.y)) c.fx.update(dt);
     for (const d of this.drips) if (near(d.x, d.y)) d.fx.update(dt);
+    for (const h of this.hands) {
+      h.t += dt;
+      if (h.t >= 3.6 || (!h.fx && h.t >= 0)) { h.t = 0; h.fx = createFx(graspingHands, { x: h.x, y: h.y, seed: 5 }); }
+      h.fx?.update(dt);
+    }
+    for (const q of this.holes) if (near(q.x, q.y)) q.fx.update(dt);
+    this.sky?.update(dt);
     for (const g of this.geysers) {
       g.t += dt;
       if (g.t >= 5.2 || (!g.fx && g.t >= 0)) { g.t = 0; g.fx = createFx(geyser, { x: g.x, y: g.y, seed: 4, height: 96 }); }
@@ -144,6 +161,22 @@ export class Stage {
         const r = 18 + (b.t / RING) * 72, d = Math.hypot(hero.x - b.x, hero.y - 16 - (b.y + 14));
         if (Math.abs(d - r) < 10 && hero.hurt(b.x)) { b.hit = true; game.emit("hurt", { x: hero.x }); game.shake(0.2, 2); }
       }
+    }
+    // les mains d'ombre, dressées, blessent ce qui passe au-dessus d'elles
+    for (const h of this.hands)
+      if (h.fx && h.t > 0.35 && h.t < 2 && overlaps(me, { x0: h.x - 26, x1: h.x + 26, y0: h.y - 48, y1: h.y }) && hero.hurt(h.x)) {
+        game.emit("hurt", { x: hero.x });
+        game.shake(0.2, 2);
+      }
+    // les trous noirs attirent le chevalier vers leur cœur (de plus en plus fort en approchant) ; le cœur blesse
+    for (const q of this.holes) {
+      const dx = q.x - hero.x, dy = q.y - (hero.y - 16), d = Math.hypot(dx, dy);
+      if (d < 120 && d > 1) {
+        const pull = 900 * (1 - d / 120);
+        hero.vx += (dx / d) * pull * dt;
+        hero.vy += (dy / d) * pull * dt;
+      }
+      if (d < 14 && hero.hurt(q.x)) { game.emit("hurt", { x: hero.x }); game.shake(0.2, 2); }
     }
     // un geyser qui jaillit projette en l'air ce qui se tient au-dessus de lui
     for (const g of this.geysers)
@@ -231,6 +264,11 @@ export class Stage {
   drawBack(frame, cam, near) {
     const level = this.level;
     drawBackdrop(frame, cam, level.theme);
+    if (this.sky) {
+      this.sky.options.x = frame.ox + 236 - cam.x * 0.02;
+      this.sky.options.y = frame.oy + 44;
+      this.sky.draw(frame);
+    }
     if (this.weather) {
       const [wx, wy] = this.weather.meta.origin;
       this.weather.options.x = frame.ox + wx;
@@ -240,6 +278,7 @@ export class Stage {
     for (const f of this.fires) if (near(f.x, f.y)) f.fx.draw(frame, "back");
     drawTiles(frame, level);
     for (const c of this.crystals) if (near(c.x, c.y)) c.fx.draw(frame);
+    for (const q of this.holes) if (near(q.x, q.y)) q.fx.draw(frame);
     for (const f of this.fires) if (near(f.x, f.y)) f.fx.draw(frame, "front");
     for (const s of this.shards) if (!s.got && near(s.x, s.y)) s.fx.draw(frame);
     if (this.grand && near(this.grand.x, this.grand.y)) drawGrand(frame, this.grand, level.theme);
@@ -249,6 +288,7 @@ export class Stage {
     for (const p of this.poisons) if (near(p.x, p.y)) p.fx.draw(frame);
     for (const d of this.drips) if (near(d.x, d.y)) d.fx.draw(frame);
     for (const g of this.geysers) if (g.fx && near(g.x, g.y)) g.fx.draw(frame);
+    for (const h of this.hands) if (h.fx && near(h.x, h.y)) h.fx.draw(frame);
     for (const b of this.bells) if (near(b.x, b.y)) drawBell(frame, b);
     this.drawWater(frame);
   }

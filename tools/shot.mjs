@@ -42,6 +42,8 @@ const SCENARIOS = {
   marais: [["level", "marais"], [0.3, ""], [1.6, "right"], [0.6, "right jump"], [0.4, "right"], [0.6, "right jump"], [0.8, "right"], ["at", 50, 11], [3.0, ""]],
   // la Cathédrale : la nef, une cloche qui sonne, le sanctuaire du maître du Serment
   cathedrale: [["level", "cathedrale"], ["at", 26, 12], [4.6, ""], ["at", 57, 11], [0.4, ""], [0.05, "special"], [0.8, ""]],
+  // la Citadelle : l'éclipse, l'orage, les mains d'ombre, un saut vers la planche sous un trou noir
+  citadelle: [["level", "citadelle"], ["at", 21, 13], [2.0, ""], ["at", 57, 13], [0.3, ""], [0.25, "right"], [0.4, "right jump"], [0.6, ""], [0.25, "right"], [0.4, "right jump"], [0.8, "right"]],
   old: [[0.6, ""], [1.6, "right"], [0.5, "right jump"], [0.6, "right"], [0.4, "jump"], [0.8, ""], [1.2, "right"], [0.3, "right jump"], [0.9, "right"]],
 };
 // « special:<id> » : le chevalier connaît ce coup, a sa jauge pleine, et le lance face au slime de la colonne 31
