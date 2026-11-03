@@ -3,7 +3,7 @@
 Un petit jeu de plateforme médiéval fantastique, dans le navigateur. La Nuit a éteint les grands braseros du royaume :
 un chevalier les rallume un à un, à l'épée et à la magie.
 
-**[Jouer en ligne](https://friteuseb.github.io/brasier/)** · au clavier ou sur mobile en paysage
+**[Jouer en ligne](https://cyril-wolfangel.com/brasier/)** · au clavier ou sur mobile en paysage
 
 Tout ce qu'on voit est dessiné en code avec [pixelfx](https://github.com/patch-gg/pixelfx) : le chevalier, les monstres,
 les flammes, la météo. Aucune image.
