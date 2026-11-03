@@ -8,7 +8,8 @@
     "dev": "esbuild src/main.js --bundle --outdir=www --servedir=www --serve=8077",
     "build": "esbuild src/main.js --bundle --minify --outdir=www",
     "shot": "node tools/shot.mjs",
-    "reach": "node tools/reach.mjs"
+    "reach": "node tools/reach.mjs",
+    "smoke": "node tools/smoke.mjs"
   },
   "dependencies": {
     "pixelfx": "github:patch-gg/pixelfx#a84159688af3ca37a4be05a0d422b94451b2e24e"

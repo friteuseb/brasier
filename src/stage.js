@@ -77,7 +77,7 @@ export class Stage {
     // les trous noirs tournent sur place ; leur origine pixelfx est sous le disque, à 30 px du centre
     this.holes = level.holes.map(([x, y], i) => ({ x, y, fx: createFx(blackHole, { x, y: y + 30, seed: i + 4 }) }));
     // l'éclipse : un astre fixe dans le ciel, qui ne bouge presque pas avec la caméra
-    this.sky = level.theme.celestial === "eclipse" && createFx(eclipse, { seed: 3 });
+    this.sky = level.theme.celestial === "eclipse" ? createFx(eclipse, { seed: 3 }) : null;
     this.falling = new Map(); // les dalles en route : "tx,ty" -> secondes depuis qu'on s'y est posé
   }
 

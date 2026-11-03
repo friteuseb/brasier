@@ -20,13 +20,14 @@ import { Special } from "./specials.js";
 import { Altar } from "./altar.js";
 import { drawHud } from "./hud.js";
 import { Orb } from "./hostiles.js";
-import { DarkKnight } from "./boss.js";
+import { Guardian } from "./boss.js";
+import { GUARDIANS } from "./guardians.js";
 import * as darkExplosion from "pixelfx/fx/shadow/dark-explosion";
 
 // le nombre d'éclats dans tout le royaume : les « * » de toutes les cartes
 const SHARDS_MAX = WORLD.reduce((n, w) => n + (w.def ? w.def.rows.join("").split("*").length - 1 : 0), 0);
-// les ennemis par lettre de carte, et le gardien (Z)
-const FOES = { ...KINDS, Z: DarkKnight };
+// les ennemis par lettre de carte ; Z est le gardien du niveau (sa fiche est nommée par le niveau)
+const foe = (ch, x, y, i, def) => (ch === "Z" ? new Guardian(GUARDIANS[def.guardian ?? "noir"], x, y) : new KINDS[ch](x, y, i + 1));
 
 export const W = 320, H = 180;
 const STEP = 1 / 120;
@@ -55,7 +56,7 @@ export function createGame() {
   const cam = { x: 0, y: 0, look: 0 };
   let acc = 0, freeze = 0, shakeT = 0, shake0 = 1, amp = 0;
   // un gardien vaincu ne revient pas
-  const spawnEnemies = () => (enemies = level.foes.filter(([ch]) => ch !== "Z" || !progress[current].boss).map(([ch, x, y], i) => new FOES[ch](x, y, i + 1)));
+  const spawnEnemies = () => (enemies = level.foes.filter(([ch]) => ch !== "Z" || !progress[current].boss).map(([ch, x, y], i) => foe(ch, x, y, i, level.def)));
 
   /** Entrer dans un niveau : au dernier brasero visité, ou au départ. */
   function enter(id) {
@@ -425,7 +426,7 @@ export function createGame() {
       for (const p of projectiles) p.draw(frame);
       for (const o of orbs) o.draw(painterFor(frame));
       stage.drawFront(frame, near);
-      stage.drawDark(frame, hero, merchants.map((m) => [m.x, m.y - 20, 70]));
+      stage.drawDark(frame, hero, [...merchants.map((m) => [m.x, m.y - 20, 70]), ...enemies.filter((e) => e.boss).map((e) => [e.x, e.y - 20, 90])]);
       embers.draw(painterFor(frame), hero.time);
       const at = merchantHere();
       const gate = !altar && !enemies.some((e) => e.boss && e.active) && stage.gateNear(hero);

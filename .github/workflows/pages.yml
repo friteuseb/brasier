@@ -28,6 +28,7 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      - run: npm run smoke
       - run: npm run build
       # la page d'écoute sert à choisir les sons en local, elle n'a pas sa place en ligne
       - run: rm -f www/ecoute.html
