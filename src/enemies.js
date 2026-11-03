@@ -8,6 +8,7 @@ import * as bat from "pixelfx/fx/critters/bat";
 import * as skull from "pixelfx/fx/critters/flying-skull";
 import * as snake from "pixelfx/fx/critters/snake";
 import * as ghost from "pixelfx/fx/critters/ghost";
+import * as frog from "pixelfx/fx/critters/frog";
 import { TILE } from "./level.js";
 
 const TAU = Math.PI * 2, WHITE = rgb(255, 255, 255);
@@ -241,6 +242,40 @@ export class Ghost extends Enemy {
   }
 }
 
-/** Les ennemis par lettre de carte : S slime, b chauve-souris, k crâne de feu, n serpent, g fantôme. */
-export const KINDS = { S: Slime, b: Bat, k: Skull, n: Snake, g: Ghost };
+// ---- la grenouille : comme le slime, elle n'avance que pendant son bond (0,42 s par cycle), mais plus loin, et elle
+// se tourne vers le chevalier quand il est à moins de 8 cases
+const F_D = frog.meta.duration, F_UP = 1.2, F_LAND = 1.62;
+export class Frog extends Enemy {
+  constructor(x, y, seed) {
+    super(frog, x, y, seed);
+    Object.assign(this, { hp: 3, loot: 5, hw: 10, hh: 14, kind: "frog" });
+  }
+  get airborne() {
+    const u = loopT(this.fx, F_D, this.seed);
+    return u >= F_UP && u < F_LAND;
+  }
+  step(dt, level, hero) {
+    this.tickTimers(dt);
+    const wasAir = this.airborne;
+    if (this.stun <= 0) this.fx.update(dt);
+    if (!this.airborne && Math.abs(hero.x - this.x) < 128 && Math.abs(hero.y - this.y) < 40) this.dir = hero.x < this.x ? -1 : 1;
+    if (this.airborne && this.stun <= 0) {
+      const nx = this.x + this.dir * 70 * dt, side = nx + this.dir * this.hw;
+      if (solidAt(level, side, this.y - 1) || !floorAt(level, side, this.y)) this.dir *= -1;
+      else this.x = nx;
+    }
+    this.knock(dt, level, true);
+    this.landed = wasAir && !this.airborne;
+    this.fx.options.x = Math.round(this.x);
+    this.fx.options.y = this.y;
+    this.fx.options.flip = this.dir < 0;
+  }
+  box() {
+    const u = loopT(this.fx, F_D, this.seed), q = (u - F_UP) / (F_LAND - F_UP), lift = this.airborne ? 22 * 4 * q * (1 - q) : 0;
+    return { x0: this.x - this.hw, x1: this.x + this.hw, y0: this.y - this.hh - lift, y1: this.y - lift };
+  }
+}
+
+/** Les ennemis par lettre de carte : S slime, b chauve-souris, k crâne de feu, n serpent, g fantôme, f grenouille. */
+export const KINDS = { S: Slime, b: Bat, k: Skull, n: Snake, g: Ghost, f: Frog };
 export const overlaps = (a, b) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;

@@ -56,7 +56,7 @@ const MOVES = {
         s.called = true;
         const x = h.x + h.face * 110, y = floorBelow(game.level, x, h.y);
         game.addFx(createFx(meteor, { x, y, flip: h.face < 0, seed: 4 }));
-        game.later(0.62, { box: around(x, y, 60, 56), dmg: 6, stop: 0.2, shake: 0.5, amp: 4, push: 4, sound: "boom" });
+        game.later(0.62, { box: around(x, y, 60, 56), dmg: 6, stop: 0.2, shake: 0.5, amp: 4, push: 4, sound: "boom", fire: true });
         game.emit("cast", { x: h.x, kind: "fire" });
       }
       return [];
@@ -157,7 +157,7 @@ const MOVES = {
           s.phase = "land";
           s.t = 0;
           game.addFx(createFx(slam, { x: h.x, y: h.y, seed: 5, reach: 80 }));
-          return [{ box: around(h.x, h.y, 72, 48), dmg: 5, stop: 0.2, shake: 0.45, amp: 4, push: 4, sound: "boom", always: true }];
+          return [{ box: around(h.x, h.y, 72, 48), dmg: 5, stop: 0.2, shake: 0.45, amp: 4, push: 4, sound: "boom", always: true, quake: true }];
         }
       }
       return [];
@@ -201,13 +201,13 @@ export class Fireball {
     this.fx.options.y = this.y;
     this.fx.update(dt);
     const me = around(this.x, this.y + 6, 6, 12, 0);
-    const wall = game.level.solid(Math.floor((this.x + this.dir * 4) / TILE), Math.floor(this.y / TILE));
+    const wall = game.level.solid(Math.floor((this.x + this.dir * 4) / TILE), Math.floor(this.y / TILE)) || game.level.solid(Math.floor((this.x + this.dir * 4) / TILE), Math.floor((this.y + 14) / TILE));
     const enemy = game.enemies.some((e) => { const b = e.box(); return me.x0 < b.x1 && me.x1 > b.x0 && me.y0 < b.y1 && me.y1 > b.y0; });
     if (!(wall || enemy || this.t > 1.4)) return [];
     this.dead = true;
     const y = floorBelow(game.level, this.x, this.y + 20);
     game.addFx(createFx(blast, { x: this.x, y, size: 0.45, seed: 7 }), 1.2);
-    return [{ box: around(this.x, y, 26, 44), dmg: 3, stop: 0.1, shake: 0.3, amp: 3, push: 3, sound: "boom", always: true }];
+    return [{ box: around(this.x, y, 26, 44), dmg: 3, stop: 0.1, shake: 0.3, amp: 3, push: 3, sound: "boom", always: true, fire: true }];
   }
   draw(frame) {
     this.fx.draw(frame);

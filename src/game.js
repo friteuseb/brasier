@@ -13,6 +13,14 @@ import { FIRST, place } from "./levels/index.js";
 import { WorldMap, drawSummary } from "./screens.js";
 import * as burnAway from "pixelfx/fx/transitions/burn-away";
 import * as flamePillar from "pixelfx/fx/fire/flame-pillar";
+import * as poisonCloud from "pixelfx/fx/nature/poison-cloud";
+import * as shardFx from "pixelfx/fx/pickups/crystal-shard";
+import * as fireflies from "pixelfx/fx/weather/fireflies";
+import * as leaves from "pixelfx/fx/weather/falling-leaves";
+import * as rain from "pixelfx/fx/weather/rain";
+
+// la météo d'un niveau : un effet pixelfx de la taille de l'écran, derrière le décor
+const WEATHER = { fireflies, leaves, rain };
 import { Hero, HW, HH } from "./hero.js";
 import { Cape, drawKnight } from "./knight.js";
 import { KINDS, overlaps, GOO } from "./enemies.js";
@@ -43,7 +51,8 @@ export function createGame() {
   // la progression : pour chaque niveau, terminé ou non, ses braseros allumés et le dernier visité
   let progress = {}, current = FIRST;
   // ce qui appartient au niveau en cours : enter() le refait
-  let level, fires, START, checkpoint, atFire, enemies, merchants, grand, stats;
+  let level, fires, START, checkpoint, atFire, enemies, merchants, grand, stats, poisons, shards, weather;
+  const shardTotal = () => Object.values(progress).reduce((n, p) => n + (p.shards?.length ?? 0), 0);
   // les effets ponctuels en cours ; speed fait jouer un effet plus vite
   let fxs = [], projectiles = [], later = [], shieldFx = null;
   // mode : "play", "summary" (bilan) ou "map" (carte du royaume) ; trans : la transition d'écran en cours
@@ -63,6 +72,7 @@ export function createGame() {
   function enter(id) {
     current = id;
     const node = place(id), pr = (progress[id] ??= { done: false, lit: [], checkpoint: null });
+    pr.shards ??= [];
     level = new Level(node.def);
     fires = level.braziers.map(([x, y], i) => ({ x, y, lit: false, fx: createFx(brazier, { x, y, seed: i + 1 }) }));
     // celui du départ brûle déjà : c'est le plus proche du point de départ
@@ -78,10 +88,17 @@ export function createGame() {
     merchants = level.merchants.map(([x, y], i) => new Merchant(x, y, i + 1));
     grand = level.grand && { x: level.grand[0], y: level.grand[1], lit: false, used: false, t: 0, fx: createFx(brazier, { x: level.grand[0], y: level.grand[1] - PED, seed: 99 }) };
     if (grand) light(grand, pr.done);
+    poisons = level.poisons.map(([x, y], i) => ({ x, y, fx: createFx(poisonCloud, { x, y, seed: i + 2 }) }));
+    // un éclat déjà ramassé ne revient pas ; tous les 3 éclats, un cœur de plus
+    shards = level.shards.map(([x, y], i) => ({ x, y, i, got: pr.shards.includes(i), fx: createFx(shardFx, { x, y: y + 14, seed: i + 5 }) }));
+    hero.bonusHp = Math.floor(shardTotal() / 3);
+    const wmod = WEATHER[level.theme.weather];
+    weather = wmod && createFx(wmod, { seed: 3 });
+    hero.oathT = 0;
     fxs = []; projectiles = []; later = []; shieldFx = null; embers.list = []; altar = null;
     cam.x = Math.max(0, Math.min(level.pxW - W, hero.x - W / 2));
     cam.y = Math.max(0, Math.min(level.pxH - H, hero.y - H * 0.62));
-    stats = { name: node.name, embers: 0, kills: 0, foes: enemies.length, time: 0 };
+    stats = { name: node.name, embers: 0, kills: 0, foes: enemies.length, time: 0, shards: pr.shards.length, shardsMax: shards.length };
     mode = "play";
   }
   /** Une transition d'écran : les flammes couvrent l'écran, then() change ce qu'il y a dessous, puis elles s'ouvrent. */
@@ -136,6 +153,19 @@ export function createGame() {
       game.emit("hit", { x: s.x, heavy: (imp.stop ?? 0) >= 0.14 });
       game.addFx(createFx(crit ? critHit : hitSpark, { x: s.x, y: s.y, height: crit ? 14 : 10, flip: hero.x > s.x, seed: Math.floor(hero.time * 60) }));
       if (dead) kill(s);
+    }
+    // les passages d'école : le feu brûle les barricades, le séisme brise les murs fissurés
+    const fire = imp.fire || (imp.sword && skills.has("lame-ardente"));
+    if (fire) for (const [x, y] of level.breakIn("%", imp.box)) {
+      game.addFx(createFx(poof, { x, y: y + 8, seed: 5, palette: ["#1a0f0a", "#3a2418", "#6a4a30", "#9a7a58"] }), 1.2);
+      game.addFx(createFx(hitSpark, { x, y: y + 8, height: 8, palette: FLAME, seed: 7 }));
+      game.emit("ignite", { x });
+      touched = true;
+    }
+    if (imp.quake) for (const [x, y] of level.breakIn("X", imp.box)) {
+      game.addFx(createFx(poof, { x, y: y + 8, seed: 6, palette: ["#16131f", "#2c273d", "#4f4669", "#7b6f9c"] }), 1.2);
+      game.emit("boom", { x });
+      touched = true;
     }
     // un coup qui porte gèle le monde et secoue l'image ; un coup dans le vide, non (sauf une explosion)
     if (touched || imp.always) {
@@ -207,6 +237,31 @@ export function createGame() {
       later = later.filter((l) => l.t > 0);
 
       for (const m of merchants) m.step(dt, hero);
+      // les plateformes de lumière portent tant que dure la grâce du Serment
+      hero.oathT = Math.max(0, (hero.oathT ?? 0) - dt);
+      level.lightOn = hero.oathT > 0 || hero.shieldT > 0;
+      level.time = (level.time ?? 0) + dt;
+      // le poison : une nappe au sol qui blesse qui la traverse
+      const me = { x0: hero.x - HW, x1: hero.x + HW, y0: hero.y - HH, y1: hero.y };
+      for (const p of poisons)
+        if (overlaps(me, { x0: p.x - 40, x1: p.x + 40, y0: p.y - 20, y1: p.y }) && hero.hurt(p.x)) {
+          game.emit("hurt", { x: hero.x });
+          game.shake(0.15, 1);
+        }
+      // les éclats de brasier
+      for (const s of shards)
+        if (!s.got && overlaps(me, { x0: s.x - 9, x1: s.x + 9, y0: s.y - 12, y1: s.y + 10 })) {
+          s.got = true;
+          progress[current].shards.push(s.i);
+          stats.shards++;
+          const total = shardTotal();
+          hero.bonusHp = Math.floor(total / 3);
+          if (total % 3 === 0) hero.hp = hero.maxHp;
+          game.say(total % 3 === 0 ? "UN CŒUR DE PLUS !" : `ÉCLAT DE BRASIER  ${total % 3} / 3`);
+          game.addFx(createFx(burst, { x: s.x, y: s.y + 10, palette: FLAME, seed: 9 }));
+          game.emit("learn", { x: s.x });
+          game.onSave?.(game.save());
+        }
       for (const s of enemies) {
         if (s.hp <= 0 || !near(s.x, s.y, 200)) continue;
         s.step(dt, level, hero);
@@ -326,7 +381,10 @@ export function createGame() {
       }
       stats.time += dt;
       for (const f of fires) if (near(f.x, f.y)) f.fx.update(dt);
+      for (const p of poisons) if (near(p.x, p.y)) p.fx.update(dt);
+      for (const s of shards) if (!s.got && near(s.x, s.y)) s.fx.update(dt);
       if (grand && near(grand.x, grand.y)) grand.fx.update(dt);
+      weather?.update(dt);
 
       // l'autel ouvert : le monde attend
       if (altar) {
@@ -356,6 +414,8 @@ export function createGame() {
         if (n && !hero.busy && hero.ardor >= n.ardor) {
           hero.ardor -= n.ardor;
           hero.special = new Special(n.id, hero);
+          // un sort du Serment fait apparaître les plateformes de lumière pour 8 s
+          if (n.branch.id === "serment") hero.oathT = 8;
         } else if (n) game.emit("deny");
       }
 
@@ -393,9 +453,16 @@ export function createGame() {
       frame.oy = Math.round(cam.y + Math.cos(n * 3.7) * k * 0.7);
       frame.light.fill(0);
       drawBackdrop(frame, cam, level.theme);
+      if (weather) {
+        const [wx, wy] = weather.meta.origin;
+        weather.options.x = frame.ox + wx;
+        weather.options.y = frame.oy + wy;
+        weather.draw(frame);
+      }
       for (const f of fires) if (near(f.x, f.y)) f.fx.draw(frame, "back");
       drawTiles(frame, level);
       for (const f of fires) if (near(f.x, f.y)) f.fx.draw(frame, "front");
+      for (const s of shards) if (!s.got && near(s.x, s.y)) s.fx.draw(frame);
       if (grand && near(grand.x, grand.y)) drawGrand(frame, grand, level.theme);
       const p = painterFor(frame);
       for (const m of merchants) if (near(m.x, m.y)) { m.drawBack(frame, p.place(0, 0)); m.drawMage(frame); m.drawFront(frame, painterFor(frame)); }
@@ -407,6 +474,7 @@ export function createGame() {
       shieldFx?.draw(frame, "front");
       for (const e of fxs) e.fx.draw(frame, "front");
       for (const p of projectiles) p.draw(frame);
+      for (const p of poisons) if (near(p.x, p.y)) p.fx.draw(frame);
       embers.draw(painterFor(frame), hero.time);
       const at = merchantHere();
       drawHud(frame, { hp: hero.hp, maxHp: hero.maxHp, purse, toast, ardor: hero.ardor, equipped: skills.equipped, specials: [...skills.owned].filter((id) => node(id).ardor).length, altarHint: at && !altar ? [at.x, at.y] : null });

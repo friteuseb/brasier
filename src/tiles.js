@@ -9,6 +9,7 @@ const C = Object.fromEntries(
   Object.entries({
     star: "#cfc8ff", moon: "#efe6c8", moonD: "#b9ab88", window: "#e8a83e", windowD: "#a0582a",
     wood: "#8a5a32", woodL: "#b9884f", woodD: "#5a3820", woodK: "#2a1810",
+    crack: "#0c0a12", lightA: "#ffe9a0", lightB: "#ffc23d", lightD: "#6a5420",
   }).map(([k, v]) => [k, hex(v)]),
 );
 // le thème en couleurs prêtes à peindre, calculé une fois par thème
@@ -43,8 +44,26 @@ export function drawBackdrop(frame, cam, theme) {
   }
   // la lune, avec un croissant d'ombre
   if (theme.moon) moon(frame, cam);
-  skyline(frame, farX, 118 - yOff, 64, T.far, T.farLit, 7, false);
-  skyline(frame, nearX, 140 - yOff, 92, T.near, T.nearEdge, 11, theme.windows);
+  const line = theme.skyline === "trees" ? treeline : skyline;
+  line(frame, farX, 118 - yOff, 64, T.far, T.farLit, 7, false);
+  line(frame, nearX, 140 - yOff, 92, T.near, T.nearEdge, 11, theme.windows);
+}
+
+// une lisière de sapins et d'arbres ronds, à la place des tours
+function treeline(frame, scroll, base, span, body, edge, seed) {
+  const { w: W, h: H, color } = frame;
+  for (let x = 0; x < W; x++) {
+    const wx = x + Math.floor(scroll);
+    let top = base - 10 - 3 * Math.sin(wx * 0.07);
+    // chaque arbre : un sapin (pointe) ou un feuillu (dôme), de hauteur variable
+    for (let i = Math.floor(wx / (span / 3)) - 1; i <= Math.floor(wx / (span / 3)) + 1; i++) {
+      const cx = i * (span / 3) + rand(i, 0, seed) * 12, h = 28 + rand(i, 1, seed) * 34, w = 9 + rand(i, 2, seed) * 8, d = Math.abs(wx - cx);
+      if (d > w) continue;
+      const pine = rand(i, 3, seed) > 0.45, y = pine ? base - h + (d / w) * h * 0.95 : base - h * 0.75 + (d * d) / (w * w) * h * 0.45;
+      top = Math.min(top, y);
+    }
+    for (let y = Math.max(0, Math.floor(top)); y < H; y++) color[y * W + x] = y === Math.floor(top) ? edge : body;
+  }
 }
 
 function moon(frame, cam) {
@@ -116,21 +135,39 @@ function plank(x, y) {
   return 0;
 }
 
+// une barricade : deux planches en croix sur trois planches debout, des clous
+function barricade(x, y) {
+  if (Math.abs(x - y) <= 1 || Math.abs(x + y - 15) <= 1) return Math.abs(x - y) === 0 || x + y === 15 ? C.woodL : C.wood;
+  if (x % 5 === 4) return C.woodK;
+  if ((x === 2 || x === 7 || x === 12) && (y === 3 || y === 12)) return C.lightD;
+  return x % 5 === 0 ? C.woodL : y % 7 === 0 ? C.woodD : C.wood;
+}
+// un mur fissuré : la pierre, zébrée d'une fente sombre
+const CRACK = new Set(["7,0", "7,1", "8,2", "8,3", "7,4", "6,5", "6,6", "7,7", "9,7", "10,8", "8,8", "7,9", "6,10", "5,11", "6,12", "7,13", "7,14", "8,15", "9,9", "11,9"]);
+const cracked = (c, x, y) => (CRACK.has(`${x},${y}`) ? C.crack : c);
+// une plateforme de lumière : un trait doré quand elle porte, un pointillé pâle sinon
+function lightPlank(x, y, on) {
+  if (y > 2) return 0;
+  if (!on) return y === 1 && x % 3 === 0 ? C.lightD : 0;
+  return y === 0 ? C.lightA : y === 1 ? C.lightB : x % 2 ? C.lightD : 0;
+}
+
 export function drawTiles(frame, level) {
   const { w: W, h: H, color, ox, oy } = frame;
   const tx0 = Math.floor(ox / TILE), ty0 = Math.floor(oy / TILE);
   for (let ty = ty0; ty <= ty0 + Math.ceil(H / TILE); ty++)
     for (let tx = tx0; tx <= tx0 + Math.ceil(W / TILE); tx++) {
       const ch = level.at(tx, ty);
-      if (ch !== "#" && ch !== "=") continue;
-      const tile = ch === "#" ? stoneTile(level, tx, ty) : null;
+      if (!"#=%X~".includes(ch) || level.broken.has(`${tx},${ty}`)) continue;
+      if (ch === "~" && !level.lightOn && Math.floor((level.time ?? 0) * 2.5) % 3) continue; // éteinte, elle se devine à peine
+      const tile = ch === "#" || ch === "X" ? stoneTile(level, tx, ty) : null;
       for (let y = 0; y < TILE; y++) {
         const py = ty * TILE + y - oy;
         if (py < 0 || py >= H) continue;
         for (let x = 0; x < TILE; x++) {
           const px = tx * TILE + x - ox;
           if (px < 0 || px >= W) continue;
-          const c = tile ? tile[y * TILE + x] : plank(x, y);
+          const c = ch === "%" ? barricade(x, y) : ch === "~" ? lightPlank(x, y, level.lightOn) : ch === "X" ? cracked(tile[y * TILE + x], x, y) : tile ? tile[y * TILE + x] : plank(x, y);
           if (c) color[py * W + px] = c;
         }
       }

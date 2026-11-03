@@ -19,7 +19,7 @@ export class Hero {
   }
 
   get maxHp() {
-    return BASE_HP + (this.skills?.has("coeur-vaillant") ? 1 : 0);
+    return BASE_HP + (this.skills?.has("coeur-vaillant") ? 1 : 0) + (this.bonusHp ?? 0);
   }
   /** En plein coup, choc ou coup spécial : il ne peut rien lancer d'autre. */
   get busy() {

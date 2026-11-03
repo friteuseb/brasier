@@ -118,7 +118,8 @@ export function drawSummary(frame, stats, t) {
   p.text("GRAND BRASIER RALLUMÉ", W / 2, 38, C.gold, { font: "frmini", align: "center", outline: C.ink });
   const lines = [
     ["Braises ramassées", String(stats.embers)],
-    ["Ennemis vaincus", `${stats.kills} / ${stats.foes}`],
+    ["Ennemis vaincus", `${Math.min(stats.kills, stats.foes)} / ${stats.foes}`],
+    ...(stats.shardsMax ? [["Éclats de brasier", `${stats.shards} / ${stats.shardsMax}`]] : []),
     ["Temps", time(stats.time)],
   ];
   // les lignes arrivent une à une

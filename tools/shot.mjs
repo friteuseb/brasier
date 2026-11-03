@@ -28,6 +28,10 @@ const SCENARIOS = {
   ghost: [["at", 45, 7], [3.0, ""]],
   // la fin des Remparts : le Grand Brasier, le bilan, la carte
   end: [["at", 90, 9], [0.4, "right"], [5.8, ""], [0.05, "attack"], [3.2, ""], [0.05, "right"], [0.8, ""]],
+  // la Forêt : on entre, on court, on saute le premier trou
+  foret: [["level", "foret"], [0.4, ""], [1.6, "right"], [0.35, "right jump"], [1.4, "right"], [0.3, "right jump"], [1.0, "right"]],
+  // les passages d'école de la Forêt : la barricade, le poison, la grotte fissurée, les plateformes de lumière
+  gates: [["level", "foret"], ["at", 31, 4], [0.5, ""], ["at", 40, 8], [0.5, ""], ["at", 67, 11], [0.5, ""], ["at", 84, 11], ["set", { oathT: 8 }], [0.5, ""]],
   old: [[0.6, ""], [1.6, "right"], [0.5, "right jump"], [0.6, "right"], [0.4, "jump"], [0.8, ""], [1.2, "right"], [0.3, "right jump"], [0.9, "right"]],
 };
 // « special:<id> » : le chevalier connaît ce coup, a sa jauge pleine, et le lance face au slime de la colonne 31
@@ -41,6 +45,11 @@ const game = createGame(), shots = [];
 let t = 0, next = 0;
 for (const [d, held, ...at] of plan) {
   // ["at", x, y] : poser le chevalier à la colonne x, sur la ligne y (cases de 16 px)
+  // ["level", id] : entrer dans ce niveau
+  if (d === "level") {
+    game.load({ v: 2, progress: {}, current: held, where: "level" });
+    continue;
+  }
   // ["set", {...}] : changer l'état du chevalier
   if (d === "set") {
     Object.assign(game.hero, held);
