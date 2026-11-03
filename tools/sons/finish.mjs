@@ -4,6 +4,8 @@
 // node tools/sons/finish.mjs   (ffmpeg requis)
 
 import { read, write, sec, onset, end, shape, loop, pops } from "./lib.mjs";
+import { pick } from "./measure.mjs";
+import { CHOICES } from "./choix.mjs";
 
 // node tools/sons/finish.mjs [swing splat ignite fire-loop ember] : seulement ces sons (tous sans argument)
 const only = process.argv.slice(2), want = (n) => !only.length || only.includes(n);
@@ -35,3 +37,17 @@ if (want("ember")) {
   const s = read("fire-loop_3");
   pops(s, 4).forEach((i, k) => write(`ember_${k}`, shape(s, { from: Math.max(0, i - sec(0.01)), len: 0.12, fadeOut: 0.06, peak: 0.6 })));
 }
+
+// les sorts, les gardiens et les musiques : la variante choisie (tools/sons/choix.mjs), sinon celle que measure.mjs propose
+const chosen = (base) => CHOICES[base] ?? pick(base, base.startsWith("mus-")).best;
+for (const base of ["cast-fire", "boom-fire", "cast-holy", "smite", "heal", "shield", "dash", "quake", "ice", "boss-wake", "boss-fall"])
+  if (want(base)) {
+    const s = read(chosen(base)), from = onset(s, 0.12, 0.02), to = end(s, from, 0.03, base.startsWith("boss") ? 3.5 : 2);
+    write(base, shape(s, { from, len: (to - from) / 44100, fadeIn: 0.01, fadeOut: Math.min(0.4, (to - from) / 44100 / 3), peak: 0.8 }));
+  }
+// une musique : on saute la première seconde (souvent une attaque), on boucle sur 2 s de fondu, plus bas que les bruitages
+for (const base of ["mus-remparts", "mus-foret", "mus-mines", "mus-marais", "mus-cathedrale", "mus-citadelle", "mus-boss", "mus-carte"])
+  if (want(base)) {
+    const s = read(chosen(base));
+    write(base, shape(loop(s.slice(sec(1), s.length - sec(0.5)), 2), { fadeIn: 0, fadeOut: 0, peak: 0.7 }));
+  }

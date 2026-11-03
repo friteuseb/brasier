@@ -18,6 +18,7 @@ les flammes, la météo. Aucune image.
 | Lancer le sort équipé, ouvrir l'échoppe | C ou K | SORT |
 | Changer de sort | V ou L | ⟳ |
 | Couper le son | M | SON |
+| Couper la musique | N | |
 
 ## Le jeu
 

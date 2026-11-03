@@ -32,6 +32,7 @@ addEventListener("keydown", (e) => {
   // le navigateur n'ouvre le son qu'après un geste ; M coupe et rend le son
   audio.unlock();
   if (e.code === "KeyM" && !e.repeat) game.say(audio.toggleMute() ? "SON COUPÉ" : "SON RÉTABLI");
+  if (e.code === "KeyN" && !e.repeat) game.say(audio.toggleMusic() ? "MUSIQUE COUPÉE" : "MUSIQUE RÉTABLIE");
   if (Object.values(KEYS).flat().includes(e.code)) e.preventDefault();
   down.add(e.code);
   tapped.add(e.code);
@@ -69,6 +70,7 @@ function tick(now) {
   game.step(dt, keys);
   audio.play(game.events, game.cam, W);
   audio.fireLevel(game.fireNear());
+  audio.music(game.music);
   tapped.clear();
   sync();
   composite(game.draw(), img.data, null);

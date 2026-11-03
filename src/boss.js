@@ -107,7 +107,7 @@ export class Guardian {
       if (this.st < dt * 1.5) {
         game.addFx(createFx(summon, { x: this.x, y: this.y, palette: cfg.slash, seed: 6 }));
         game.say(this.name);
-        game.emit("boom", { x: this.x });
+        game.emit("boss-wake", { x: this.x });
         game.shake(0.5, 2);
       }
       this.face = hero.x < this.x ? -1 : 1;
@@ -193,7 +193,7 @@ export class Guardian {
         t += dt;
         if (t < 0) this.pose = track(dashStrike, -0.16 + (t + 0.38) * 0.4);
         else if (t < 0.22) {
-          if (t - dt < 0) game.emit("swing", { x: me.x, n: 2 });
+          if (t - dt < 0) { game.emit("swing", { x: me.x, n: 2 }); game.emit("dash", { x: me.x }); }
           me.vx = me.face * 480;
           this.pose = track(dashStrike, Math.min(t, 0.13));
           if (!hit && overlaps({ x0: me.x - 16, x1: me.x + 16, y0: me.y - 34, y1: me.y }, heroBox(hero))) { hit = true; hurt(me.x, 0.3); }
@@ -222,7 +222,7 @@ export class Guardian {
             const a = base + (i - (count - 1) / 2) * 0.22;
             me.balls.push({ x, y, vx: Math.cos(a) * speed, vy: Math.sin(a) * speed, t: 0, fx: createFx(o.fx ?? fireball, { x, y, angle: a, palette: o.palette ?? me.cfg.slash, seed: 8 + i }) });
           }
-          game.emit("cast", { x: me.x });
+          game.emit("cast", { x: me.x, kind: me.cfg.cast });
         }
         return tau >= 1.35;
       },
@@ -240,7 +240,7 @@ export class Guardian {
           n++;
           game.addFx(createFx(o.fx, { x: hero.x, y: me.home.y, palette: o.palette ?? me.cfg.slash, seed: 9 + n }));
           me.strikes.push({ x: hero.x, y: me.home.y, t: o.delay ?? 0.47, r: o.r ?? 24, sound: o.sound });
-          game.emit("cast", { x: me.x });
+          game.emit("cast", { x: me.x, kind: me.cfg.cast });
         }
         return t > 0.6 + count * gap;
       },
@@ -258,7 +258,7 @@ export class Guardian {
         if (!fired && t > 0.5) {
           fired = true;
           game.addFx(createFx(o.fx, { x: me.x, y: me.y, palette: o.palette ?? me.cfg.slash, seed: 4 }));
-          me.strikes.push({ x: me.x, y: me.home.y, t: o.delay ?? 0.3, r: o.r ?? 64, sound: "boom" });
+          me.strikes.push({ x: me.x, y: me.home.y, t: o.delay ?? 0.3, r: o.r ?? 64, sound: me.cfg.cast === "ice" ? "ice" : "quake" });
         }
         return t > 1.3;
       },
@@ -284,7 +284,7 @@ export class Guardian {
             phase = "land"; t = 0; me.lift = 0;
             game.addFx(createFx(o.fx ?? slam, { x: me.x, y: me.y, palette: o.palette, seed: 5, reach: 80 }));
             game.shake(0.45, 4);
-            game.emit("boom", { x: me.x });
+            game.emit("quake", { x: me.x });
             // l'onde court au sol : en l'air, on y échappe
             if (hero.ground && Math.abs(hero.x - me.x) < (o.r ?? 76)) hurt(me.x, 0.4);
           }

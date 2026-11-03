@@ -23,7 +23,7 @@
 <body>
 <main>
   <h1>Écoute des sons</h1>
-  <p>Cliquez pour écouter. Notez les noms de ceux qui vous plaisent (par exemple « swing-b_1 ») et donnez-les à Claude. La touche Espace rejoue le dernier son.</p>
+  <p>Le jeu utilise pour l'instant la variante marquée ★. Cliquez pour écouter. Notez les noms de ceux qui vous plaisent (par exemple « swing-b_1 ») et donnez-les à Claude. La touche Espace rejoue le dernier son.</p>
   <div id="groups"></div>
 </main>
 <script>
@@ -33,16 +33,26 @@
     "swing-c": "épée longue, souffle grave",
     "swing-d": "souffle de cinéma, court",
     "swing-e": "souffle suivi d'un tintement d'acier",
+    "cast-fire": "lancer d'une boule de feu", "boom-fire": "explosion de feu", "cast-holy": "sort du Serment",
+    smite: "éclair de lumière (Châtiment)", heal: "Prière", shield: "Bouclier divin", dash: "Ruée",
+    quake: "Séisme, bond d'un gardien", ice: "magie de glace (Gardien de givre)",
+    "boss-wake": "un gardien se réveille", "boss-fall": "un gardien tombe",
+    "mus-remparts": "musique : les Remparts", "mus-foret": "musique : la Forêt", "mus-mines": "musique : les Mines",
+    "mus-marais": "musique : le Marais", "mus-cathedrale": "musique : la Cathédrale", "mus-citadelle": "musique : la Citadelle",
+    "mus-boss": "musique : combat de gardien", "mus-carte": "musique : la carte du royaume",
   };
-  let last = null;
+  let last = null, PICKED = [];
   const play = (name, btn) => {
     document.querySelectorAll("button.on").forEach((b) => b.classList.remove("on"));
     btn.classList.add("on");
     last = [name, btn];
-    new Audio(`sons/candidats/${name}.ogg`).play();
+    if (window.cur) { window.cur.pause(); }
+    window.cur = new Audio(`sons/candidats/${name}.ogg`);
+    window.cur.play();
   };
   addEventListener("keydown", (e) => { if (e.code === "Space" && last) { e.preventDefault(); play(...last); } });
-  fetch("sons/candidats/liste.json").then((r) => r.json()).then((list) => {
+  Promise.all([fetch("sons/candidats/liste.json").then((r) => r.json()), fetch("sons/candidats/choix.json").then((r) => r.json()).catch(() => [])]).then(([list, picked]) => {
+    PICKED = picked;
     const groups = {};
     for (const n of list) (groups[n.split("_")[0]] ??= []).push(n);
     const root = document.getElementById("groups");
@@ -52,7 +62,7 @@
       div.innerHTML = `<h2>${g}</h2><div class="desc">${DESC[g] ?? ""}</div><div class="row"></div>`;
       for (const n of names) {
         const b = document.createElement("button");
-        b.textContent = n;
+        b.textContent = (PICKED.includes(n) ? "★ " : "") + n;
         b.onclick = () => play(n, b);
         div.querySelector(".row").append(b);
       }

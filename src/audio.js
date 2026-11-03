@@ -39,15 +39,26 @@ const RECIPES = {
   fall: [{ files: n5("impactPlate_heavy"), vol: 0.35, rate: 0.7 }],
   ignite: [{ files: ["ignite"], vol: 0.9 }],
   // les coups spéciaux
+  // cast se décline selon l'école (voir play()) ; sans école, le souffle grave de l'épée
   cast: [{ files: ["swing_0", "swing_1", "swing_2"], vol: 0.45, rate: 0.7 }],
+  "cast-fire": [{ files: ["cast-fire"], vol: 0.7, vary: 0.05 }],
+  "cast-holy": [{ files: ["cast-holy"], vol: 0.6, vary: 0.05 }],
+  "cast-ice": [{ files: ["ice"], vol: 0.6, vary: 0.08 }],
   boom: [
-    { files: n5("impactPunch_heavy"), vol: 0.9, rate: 0.7 },
-    { files: ["ignite"], vol: 0.6, rate: 1.2 },
+    { files: ["boom-fire"], vol: 0.85, vary: 0.06 },
+    { files: n5("impactPunch_heavy"), vol: 0.5, rate: 0.7 },
   ],
-  smite: [
-    { files: n5("impactPlate_heavy"), vol: 0.7, rate: 1.3 },
-    { files: n5("impactPunch_heavy"), vol: 0.7 },
+  smite: [{ files: ["smite"], vol: 0.8, vary: 0.05 }],
+  heal: [{ files: ["heal"], vol: 0.6 }],
+  shield: [{ files: ["shield"], vol: 0.6 }],
+  dash: [{ files: ["dash"], vol: 0.6, vary: 0.06 }],
+  quake: [
+    { files: ["quake"], vol: 0.9, vary: 0.05 },
+    { files: n5("impactPunch_heavy"), vol: 0.4, rate: 0.6 },
   ],
+  ice: [{ files: ["ice"], vol: 0.7, vary: 0.06 }],
+  "boss-wake": [{ files: ["boss-wake"], vol: 0.85 }],
+  "boss-fall": [{ files: ["boss-fall"], vol: 0.9 }],
   bell: [{ files: n5("impactBell_heavy"), vol: 0.55, rate: 0.8, vary: 0.03 }],
   // l'eau
   splash: [{ files: n5("impactSoft_heavy"), vol: 0.45, rate: 1.3 }],
@@ -118,7 +129,8 @@ function layer(l, pan, gain) {
 export function play(events, cam, W) {
   if (!ctx || ctx.state !== "running") return;
   for (const e of events) {
-    const recipe = RECIPES[e.type === "hit" && e.heavy ? "heavyHit" : e.type];
+    const type = e.type === "hit" && e.heavy ? "heavyHit" : e.type === "cast" && RECIPES[`cast-${e.kind}`] ? `cast-${e.kind}` : e.type;
+    const recipe = RECIPES[type];
     if (!recipe) continue;
     // un son hors de l'écran s'éteint avec la distance
     const sx = e.x === undefined ? W / 2 : e.x - cam.x, off = Math.max(0, Math.abs(sx - W / 2) - W / 2);
@@ -140,4 +152,41 @@ function startFire(buf) {
 /** level : 0 loin de tout feu, 1 tout près d'un brasero allumé. */
 export function fireLevel(level) {
   if (fire) fire.gain.setTargetAtTime(level * 0.5, ctx.currentTime, 0.25);
+}
+
+// ---- la musique : une boucle par lieu ; on passe de l'une à l'autre en fondu enchaîné. Chaque morceau ne se charge que
+// la première fois qu'on en a besoin.
+const MUSIC_VOL = 0.32, tracks = new Map();
+let playing = null, musicMuted = false;
+export function music(name) {
+  if (!ctx || ctx.state !== "running" || name === playing?.name) return;
+  const old = playing, me = (playing = { name, g: ctx.createGain(), src: null });
+  me.g.gain.value = 0;
+  me.g.connect(master);
+  const start = (buf) => {
+    if (playing !== me) return;
+    me.src = ctx.createBufferSource();
+    me.src.buffer = buf;
+    me.src.loop = true;
+    me.src.connect(me.g);
+    me.src.start();
+    me.g.gain.setTargetAtTime(musicMuted ? 0 : MUSIC_VOL, ctx.currentTime, 0.6);
+  };
+  if (tracks.has(name)) start(tracks.get(name));
+  else
+    fetch(`sons/${name}.ogg`)
+      .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject()))
+      .then((b) => ctx.decodeAudioData(b))
+      .then((buf) => { tracks.set(name, buf); start(buf); })
+      .catch(() => {});
+  if (old) {
+    old.g.gain.setTargetAtTime(0, ctx.currentTime, 0.6);
+    setTimeout(() => { old.src?.stop(); old.g.disconnect(); }, 3000);
+  }
+}
+/** N : couper ou rendre la musique seule. */
+export function toggleMusic() {
+  musicMuted = !musicMuted;
+  if (playing && ctx) playing.g.gain.setTargetAtTime(musicMuted ? 0 : MUSIC_VOL, ctx.currentTime, 0.2);
+  return musicMuted;
 }

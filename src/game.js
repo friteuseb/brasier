@@ -117,7 +117,7 @@ export function createGame() {
       game.addFx(createFx(darkExplosion, { x: s.x, y: s.y, seed: 4 }));
       game.shake(0.8, 4);
       game.say(`${s.name} EST TOMBÉ`);
-      game.emit("boom", { x: s.x });
+      game.emit("boss-fall", { x: s.x });
       services.save();
     }
   }
@@ -199,6 +199,11 @@ export function createGame() {
     frame, hero, cam, skills,
     get level() { return level; },
     get mode() { return mode; },
+    /** La musique qui convient : celle du niveau, celle des gardiens pendant un combat, celle de la carte ailleurs. */
+    get music() {
+      if (mode !== "play") return "mus-carte";
+      return enemies.some((e) => e.boss && e.active && e.hp > 0) ? "mus-boss" : `mus-${current}`;
+    },
     // les événements de l'image (pour les sons) : { type, x, y, ... } ; main.js les lit après step()
     events: [],
     emit(type, e = {}) { game.events.push({ type, ...e }); },

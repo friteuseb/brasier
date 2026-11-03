@@ -18,7 +18,8 @@ Brasier n'utilise pas la police Patch Pixel de pixelfx.
 
 - Les fichiers `www/sons/cloth*`, `footstep_*` et `impact*` viennent des packs « RPG Audio » et « Impact Sounds » de
   **Kenney** (https://kenney.nl), licence Creative Commons Zero (CC0).
-- Les fichiers `swing_*`, `splat_*`, `ember_*`, `ignite` et `fire-loop` ont été générés avec **Stable Audio Open 1.0**
+- Les fichiers `swing_*`, `splat_*`, `ember_*`, `ignite`, `fire-loop`, les sons des sorts et des gardiens
+  (`cast-*`, `boom-fire`, `smite`, `heal`, `shield`, `dash`, `quake`, `ice`, `boss-*`) et les musiques (`mus-*`) ont été générés avec **Stable Audio Open 1.0**
   de Stability AI (licence Stability AI Community), puis découpés par `tools/sons/finish.mjs`.
 
 Le détail est aussi dans `www/sons/LICENCE.md`.

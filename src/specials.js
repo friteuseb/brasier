@@ -91,6 +91,7 @@ const MOVES = {
         s.fx = createFx(heal, { x: h.x, y: h.y, flip: h.face < 0, actor: knightActor() });
         game.addFx(s.fx);
         game.emit("cast", { x: h.x, kind: "holy" });
+        game.emit("heal", { x: h.x });
       }
       s.fx.options.x = h.x;
       s.fx.options.y = h.y;
@@ -109,7 +110,7 @@ const MOVES = {
       if (s.t === 0) {
         h.shieldT = 6;
         game.addShield(createFx(shield, { x: h.x, y: h.y, flip: h.face < 0, actor: knightActor() }));
-        game.emit("cast", { x: h.x, kind: "holy" });
+        game.emit("shield", { x: h.x });
       }
       s.t += dt;
       return [];
@@ -123,7 +124,7 @@ const MOVES = {
     step(s, dt, h, game) {
       const t0 = s.tau;
       s.tau += dt;
-      if (t0 < 0 && s.tau >= 0) game.emit("swing", { x: h.x, n: 2 });
+      if (t0 < 0 && s.tau >= 0) { game.emit("swing", { x: h.x, n: 2 }); game.emit("dash", { x: h.x }); }
       const out = [];
       if (s.tau >= 0 && s.tau < 0.16) {
         h.vx = h.face * 600;
@@ -157,7 +158,7 @@ const MOVES = {
           s.phase = "land";
           s.t = 0;
           game.addFx(createFx(slam, { x: h.x, y: h.y, seed: 5, reach: 80 }));
-          return [{ box: around(h.x, h.y, 72, 48), dmg: 5, stop: 0.2, shake: 0.45, amp: 4, push: 4, sound: "boom", always: true, quake: true }];
+          return [{ box: around(h.x, h.y, 72, 48), dmg: 5, stop: 0.2, shake: 0.45, amp: 4, push: 4, sound: "quake", always: true, quake: true }];
         }
       }
       return [];
