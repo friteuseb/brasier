@@ -48,6 +48,10 @@ const RECIPES = {
     { files: n5("impactPlate_heavy"), vol: 0.7, rate: 1.3 },
     { files: n5("impactPunch_heavy"), vol: 0.7 },
   ],
+  // l'eau
+  splash: [{ files: n5("impactSoft_heavy"), vol: 0.45, rate: 1.3 }],
+  swim: [{ files: ["cloth1", "cloth2", "cloth3"], vol: 0.3, rate: 0.7 }],
+  geyser: [{ files: ["ignite"], vol: 0.6, rate: 0.6 }],
   // une dalle qui tombe
   crumble: [
     { files: n5("impactSoft_heavy"), vol: 0.45, rate: 0.6 },

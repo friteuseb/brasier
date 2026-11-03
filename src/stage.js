@@ -14,6 +14,7 @@ import * as rain from "pixelfx/fx/weather/rain";
 import * as iceCrystal from "pixelfx/fx/ice/ice-crystal";
 import * as drip from "pixelfx/fx/water/drip";
 import * as poof from "pixelfx/fx/spawn/poof";
+import * as geyser from "pixelfx/fx/water/geyser";
 import { Level } from "./level.js";
 import { HW, HH } from "./hero.js";
 import { overlaps } from "./enemies.js";
@@ -27,6 +28,7 @@ const LIT = brazier.meta.options.palette;
 // les cristaux des Mines : un violet froid, pour trancher sur le feu des braseros
 const CRYSTAL = ["#140a2e", "#2a1462", "#4a2aa0", "#7a52d8", "#a888f0", "#d8c8ff", "#f4eeff", "#ffffff"];
 const CRUMBLE = 0.5, BACK = 3.5; // une dalle tombe 0,5 s après qu'on s'y pose, et revient 3 s plus tard
+const WATER = { deep: hex("#16364a"), light: hex("#4a8ab0"), foam: hex("#c8e8f4") };
 const BAYER = [0, 8, 2, 10, 12, 4, 14, 6, 3, 11, 1, 9, 15, 7, 13, 5].map((v) => (v + 0.5) / 16);
 const DARK = [0.1, 0.26, 0.48, 0.74, 1]; // les marches de l'obscurité, du noir à la pleine lumière
 const PED = 18; // la hauteur du socle du Grand Brasier
@@ -61,6 +63,8 @@ export class Stage {
     this.weather = w && createFx(w, { seed: 3 });
     this.crystals = level.crystals.map(([x, y], i) => ({ x, y, fx: createFx(iceCrystal, { x, y, seed: i + 21, palette: CRYSTAL, height: 20 }) }));
     this.drips = level.drips.map(([x, y], i) => ({ x, y, fx: createFx(drip, { x, y, seed: i + 1, height: 70 }) }));
+    // les geysers jaillissent toutes les 5,2 s, chacun décalé ; la colonne d'eau porte de 1,15 à 2,5 s de leur cycle
+    this.geysers = level.geysers.map(([x, y], i) => ({ x, y, t: -i * 1.7, fx: null }));
     this.falling = new Map(); // les dalles en route : "tx,ty" -> secondes depuis qu'on s'y est posé
   }
 
@@ -91,6 +95,11 @@ export class Stage {
     this.weather?.update(dt);
     for (const c of this.crystals) if (near(c.x, c.y)) c.fx.update(dt);
     for (const d of this.drips) if (near(d.x, d.y)) d.fx.update(dt);
+    for (const g of this.geysers) {
+      g.t += dt;
+      if (g.t >= 5.2 || (!g.fx && g.t >= 0)) { g.t = 0; g.fx = createFx(geyser, { x: g.x, y: g.y, seed: 4, height: 96 }); }
+      g.fx?.update(dt);
+    }
   }
 
   /**
@@ -123,6 +132,13 @@ export class Stage {
         this.falling.delete(k);
       }
     }
+    // un geyser qui jaillit projette en l'air ce qui se tient au-dessus de lui
+    for (const g of this.geysers)
+      if (g.fx && g.t > 1.15 && g.t < 2.5 && Math.abs(hero.x - g.x) < 12 && hero.y > g.y - 100 && hero.y <= g.y + 2 && hero.vy > -400) {
+        hero.vy = -470;
+        hero.ground = false;
+        if (!g.launched) { g.launched = true; game.emit("geyser", { x: g.x }); }
+      } else if (g.t < 1) g.launched = false;
     // le poison : une nappe au sol qui blesse qui la traverse
     for (const p of this.poisons)
       if (overlaps(me, { x0: p.x - 40, x1: p.x + 40, y0: p.y - 20, y1: p.y }) && hero.hurt(p.x)) {
@@ -219,6 +235,29 @@ export class Stage {
   drawFront(frame, near) {
     for (const p of this.poisons) if (near(p.x, p.y)) p.fx.draw(frame);
     for (const d of this.drips) if (near(d.x, d.y)) d.fx.draw(frame);
+    for (const g of this.geysers) if (g.fx && near(g.x, g.y)) g.fx.draw(frame);
+    this.drawWater(frame);
+  }
+
+  // l'eau profonde : un voile translucide par-dessus tout, une ligne claire qui ondule à la surface
+  drawWater(frame) {
+    const level = this.level, p = painterFor(frame), t = level.time ?? 0, { ox, oy, w: W, h: H } = frame;
+    for (let ty = Math.floor(oy / 16); ty <= Math.floor((oy + H) / 16); ty++)
+      for (let tx = Math.floor(ox / 16); tx <= Math.floor((ox + W) / 16); tx++) {
+        if (!level.water(tx, ty)) continue;
+        const top = !level.water(tx, ty - 1);
+        for (let y = 0; y < 16; y++)
+          for (let x = 0; x < 16; x++) {
+            const wx = tx * 16 + x, wy = ty * 16 + y;
+            if (top) {
+              const wave = Math.round(Math.sin(wx * 0.35 + t * 3) * 0.8 + Math.sin(wx * 0.13 - t * 2) * 0.7);
+              if (y < 1 + wave) continue;
+              if (y === 1 + wave) { p.blendPx(wx, wy, WATER.foam, 0.8); continue; }
+              if (y === 2 + wave) { p.blendPx(wx, wy, WATER.light, 0.6); continue; }
+            }
+            p.blendPx(wx, wy, wy % 5 === 0 && (wx + Math.floor(t * 8)) % 9 === 0 ? WATER.light : WATER.deep, 0.42);
+          }
+      }
   }
 
   /**

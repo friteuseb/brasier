@@ -10,6 +10,7 @@ import * as snake from "pixelfx/fx/critters/snake";
 import * as ghost from "pixelfx/fx/critters/ghost";
 import * as frog from "pixelfx/fx/critters/frog";
 import * as eyeball from "pixelfx/fx/critters/eyeball";
+import * as jellyfish from "pixelfx/fx/critters/jellyfish";
 import { TILE } from "./level.js";
 
 const TAU = Math.PI * 2, WHITE = rgb(255, 255, 255);
@@ -308,6 +309,35 @@ export class Eye extends Enemy {
   }
 }
 
-/** Les ennemis par lettre de carte : S slime, b chauve-souris, k crâne de feu, n serpent, g fantôme, f grenouille, e œil volant. */
-export const KINDS = { S: Slime, b: Bat, k: Skull, n: Snake, g: Ghost, f: Frog, e: Eye };
+// ---- la méduse : elle monte et descend dans l'eau autour de sa place, et dérive vers le chevalier quand il nage près
+// d'elle ; elle ne sort jamais de l'eau
+export class Jelly extends Enemy {
+  constructor(x, y, seed) {
+    super(jellyfish, x, y, seed);
+    Object.assign(this, { hp: 2, loot: 4, hw: 10, hh: 10, kind: "jelly", home: { x, y }, t: seed, stunTime: 0.4 });
+  }
+  step(dt, level, hero) {
+    this.tickTimers(dt);
+    this.fx.update(dt);
+    this.t += dt;
+    if (this.stun <= 0) {
+      const chase = hero.swim && Math.abs(hero.x - this.x) < 110 ? Math.sign(hero.x - this.x) * 18 * dt : 0;
+      const nx = this.x + chase, wet = (x, y) => level.water(Math.floor(x / TILE), Math.floor(y / TILE));
+      if (wet(nx + Math.sign(chase) * this.hw, this.y)) this.x = nx;
+      const ny = this.home.y + Math.sin(this.t * 1.1) * 18;
+      if (wet(this.x, ny - this.hh) && wet(this.x, ny + this.hh)) this.y = ny;
+    }
+    this.knock(dt, level, false);
+    if (!level.water(Math.floor(this.x / TILE), Math.floor(this.y / TILE))) this.x = this.home.x; // jamais hors de l'eau
+    this.fx.options.x = Math.round(this.x);
+    this.fx.options.y = Math.round(this.y) - 6;
+  }
+  box() {
+    // la cloche et le haut des tentacules
+    return { x0: this.x - this.hw, x1: this.x + this.hw, y0: this.y - this.hh - 6, y1: this.y + 16 };
+  }
+}
+
+/** Les ennemis par lettre de carte : S slime, b chauve-souris, k crâne de feu, n serpent, g fantôme, f grenouille, e œil volant, j méduse. */
+export const KINDS = { S: Slime, b: Bat, k: Skull, n: Snake, g: Ghost, f: Frog, e: Eye, j: Jelly };
 export const overlaps = (a, b) => a.x0 < b.x1 && a.x1 > b.x0 && a.y0 < b.y1 && a.y1 > b.y0;

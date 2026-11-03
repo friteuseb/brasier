@@ -22,10 +22,13 @@ function reach(level) {
     const dt = 1 / 120;
     let t = 0, left = false;
     while (t < 3) {
-      h.step(dt, { left: dir < 0, right: dir > 0, jump: jump && t < hold }, level);
+      // hold < 0 : on tape saut toutes les 0,3 s (pour nager hors d'un bassin, brasse après brasse)
+      const press = hold < 0 ? t % 0.3 < 0.12 : jump && t < hold;
+      h.step(dt, { left: dir < 0, right: dir > 0, jump: press }, level);
       t += dt;
       if (h.x === h.spawnAt.x && h.y === h.spawnAt.y && t > dt) return null; // tombé dans un trou : remis au départ
       if (!h.ground) left = true;
+      if (hold < 0 && h.swim && t > 2.9) return null;
       if (left && h.ground) {
         // la case qui le porte : sous son centre, ou sous le bord de sa boîte quand il atterrit au ras du vide
         const ty = Math.round(h.y / TILE) - 1;
@@ -44,7 +47,7 @@ function reach(level) {
       for (const off of [5, 8, 11])
         for (const dir of [-1, 1])
           for (const vx of [0, dir * 108]) {
-            for (const hold of [0.05, 0.12, 0.2, 0.3, 0.45]) {
+            for (const hold of [0.05, 0.12, 0.2, 0.3, 0.45, ...(level.water(tx, ty) || level.water(tx, ty - 1) ? [-1] : [])]) {
               const r = attempt(tx * TILE + off, foot, vx, dir, hold, true);
               if (r) out.add(key(...r));
             }

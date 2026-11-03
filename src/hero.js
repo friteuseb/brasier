@@ -66,8 +66,13 @@ export class Hero {
       }
     }
 
-    // course : accélère vite, freine plus vite encore, moins de contrôle en l'air
-    const run = RUN * (this.skills?.has("elan") ? 1.12 : 1);
+    // dans l'eau profonde (le Marais), le corps à moitié immergé : il nage
+    const swim = !!level.water?.(Math.floor(this.x / TILE), Math.floor((this.y - 14) / TILE));
+    if (swim && !this.swim) game?.emit("splash", { x: this.x });
+    this.swim = swim;
+
+    // course : accélère vite, freine plus vite encore, moins de contrôle en l'air ; l'eau freine tout
+    const run = RUN * (this.skills?.has("elan") ? 1.12 : 1) * (swim ? 0.55 : 1);
     const dashing = this.special && !this.special.rooted;
     const target = dir * run, rate = !this.ground ? (this.hurtT > 0 ? 200 : AIR) : this.attack ? DECEL * 0.35 : dir && Math.sign(dir) === Math.sign(this.vx || dir) ? ACCEL : DECEL;
     // la ruée et le séisme fixent eux-mêmes la vitesse
@@ -83,9 +88,15 @@ export class Hero {
       this.vy = -JUMP;
       this.buffer = this.coyote = 0;
       this.ground = false;
+    } else if (swim && this.buffer > 0 && !this.special) {
+      // dans l'eau, chaque appui donne une brasse ; près de la surface, elle le sort de l'eau
+      const surface = !level.water(Math.floor(this.x / TILE), Math.floor((this.y - 30) / TILE));
+      this.vy = surface ? -JUMP * 0.95 : -190;
+      this.buffer = 0;
+      game?.emit("swim", { x: this.x });
     }
-    const g = this.vy < 0 && keys.jump ? GRAVITY : FALL_GRAVITY;
-    this.vy = Math.min(MAX_FALL, this.vy + g * dt);
+    const g = (this.vy < 0 && keys.jump ? GRAVITY : FALL_GRAVITY) * (swim ? 0.3 : 1);
+    this.vy = Math.min(swim ? 70 : MAX_FALL, this.vy + g * dt);
 
     this.moveX(this.vx * dt, level);
     const wasGround = this.ground, fallSpeed = this.vy;

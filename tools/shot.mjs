@@ -38,6 +38,8 @@ const SCENARIOS = {
   mines: [["level", "mines"], [0.3, ""], [1.4, "right"], [1.4, "right"], [0.3, ""], ["at", 64, 13], [2.0, ""]],
   // la forge du maître de la Flamme, puis un marchand ordinaire (les paliers 3 et 4 renvoient aux maîtres)
   forge: [["level", "mines"], ["at", 69, 13], [0.5, ""], [0.05, "special"], [0.6, ""], [0.05, "down"], [0.05, ""], [0.05, "down"], [0.4, ""], [0.05, "special"], [0.3, ""], ["level", "remparts"], ["at", 10, 9], [0.5, ""], [0.05, "special"], [0.3, ""], [0.05, "down"], [0.05, ""], [0.05, "down"], [0.05, ""], [0.05, "attack"], [0.4, ""]],
+  // le Marais : la pluie, on plonge dans un bassin, on nage, on en sort ; puis le geyser
+  marais: [["level", "marais"], [0.3, ""], [1.6, "right"], [0.6, "right jump"], [0.4, "right"], [0.6, "right jump"], [0.8, "right"], ["at", 50, 11], [3.0, ""]],
   old: [[0.6, ""], [1.6, "right"], [0.5, "right jump"], [0.6, "right"], [0.4, "jump"], [0.8, ""], [1.2, "right"], [0.3, "right jump"], [0.9, "right"]],
 };
 // « special:<id> » : le chevalier connaît ce coup, a sa jauge pleine, et le lance face au slime de la colonne 31

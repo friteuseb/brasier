@@ -7,6 +7,7 @@
 //   %  barricade de bois (la Flamme la brûle)   X  mur fissuré (le Séisme de l'Acier le brise)
 //   ~  plateforme de lumière (elle porte pendant 8 s après un sort du Serment)   *  éclat de brasier
 // Le décor et les pièges :   _  dalle qui s'effrite sous les pieds   c  cristal (une lumière dans le noir)   d  goutte
+//   w  eau profonde (on y nage)   y  geyser (il projette en l'air)   j  méduse (dans l'eau)
 
 export const TILE = 16;
 
@@ -31,6 +32,7 @@ export class Level {
     this.shaking = new Map(); // les dalles qui tremblent avant de tomber : "tx,ty" -> secondes écoulées
     this.crystals = [];
     this.drips = [];
+    this.geysers = [];
     this.spawn = { x: TILE, y: TILE };
     this.cells.forEach((row, ty) =>
       [...row].forEach((ch, tx) => {
@@ -42,6 +44,8 @@ export class Level {
         if (ch === "*") this.shards.push([cx, ty * TILE + TILE / 2]);
         if (ch === "c") this.crystals.push([cx, foot]);
         if (ch === "d") this.drips.push([cx, foot]);
+        if (ch === "y") this.geysers.push([cx, foot]);
+        if (ch === "j") this.foes.push([ch, cx, ty * TILE + TILE / 2]);
         if ("bkge".includes(ch)) this.foes.push([ch, cx, ty * TILE + TILE / 2]);
         // un marchand : [x, pieds, école du maître ou null]
         if ("MFAO".includes(ch)) this.merchants.push([cx, foot, { F: "flamme", A: "acier", O: "serment" }[ch] ?? null]);
@@ -64,6 +68,11 @@ export class Level {
   oneWay(tx, ty) {
     const ch = this.at(tx, ty);
     return ch === "=" || (ch === "~" && this.lightOn) || (ch === "_" && !this.crumbled.has(`${tx},${ty}`));
+  }
+  /** L'eau profonde : on y nage. Une méduse et un geyser comptent comme de l'eau (ils y sont). */
+  water(tx, ty) {
+    const ch = this.at(tx, ty);
+    return ch === "w" || ch === "j" || ch === "y";
   }
   /** Ouvrir les passages d'un type ("%" ou "X") qui touchent une boîte du monde ; renvoie les cases ouvertes. */
   breakIn(kind, box) {
