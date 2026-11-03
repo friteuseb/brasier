@@ -205,9 +205,12 @@ export class Fireball {
     const enemy = game.enemies.some((e) => { const b = e.box(); return me.x0 < b.x1 && me.x1 > b.x0 && me.y0 < b.y1 && me.y1 > b.y0; });
     if (!(wall || enemy || this.t > 1.4)) return [];
     this.dead = true;
-    const y = floorBelow(game.level, this.x, this.y + 20);
+    // près du sol, l'explosion part du sol ; en l'air (au-dessus d'un vide), elle éclate là où la boule a touché
+    const floor = floorBelow(game.level, this.x, this.y + 20), low = floor - this.y < 34, y = low ? floor : this.y + 12;
     game.addFx(createFx(blast, { x: this.x, y, size: 0.45, seed: 7 }), 1.2);
-    return [{ box: around(this.x, y, 26, 44), dmg: 3, stop: 0.1, shake: 0.3, amp: 3, push: 3, sound: "boom", always: true, fire: true }];
+    // les dégâts couvrent toujours le point d'impact, et le sol quand il est proche
+    const box = { x0: this.x - 26, x1: this.x + 26, y0: Math.min(this.y - 24, y - 44), y1: Math.max(this.y + 24, y + 4) };
+    return [{ box, dmg: 3, stop: 0.1, shake: 0.3, amp: 3, push: 3, sound: "boom", always: true, fire: true }];
   }
   draw(frame) {
     this.fx.draw(frame);
