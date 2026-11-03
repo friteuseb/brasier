@@ -1,7 +1,7 @@
 // L'interface en jeu : cœurs, braises, jauge d'ardeur et coup spécial équipé en haut à gauche ; un message au centre ;
 // « C : AUTEL » au-dessus d'un brasero allumé. Elle ne prend pas la lumière du décor.
 
-import { hex, painterFor } from "pixelfx";
+import { hex, mix, painterFor } from "pixelfx";
 import { node } from "./skills.js";
 
 const HEART = [".##.##.", "#hh#ll#", "#hllll#", "#lllll#", ".#lll#.", "..#l#..", "...#..."];
@@ -40,8 +40,9 @@ export function drawHud(frame, s) {
     p.text(s.boss.name, W / 2, y - 11, TEXT, { font: "frmini", align: "center", outline: INK });
     p.rect(x - 1, y - 1, w + 2, 6, INK);
     p.rect(x, y, w, 4, BAR[0]);
-    p.rect(x, y, Math.round(w * k), 4, hex("#8048b8"));
-    p.rect(x, y, Math.round(w * k), 1, hex("#c8a0f0"));
+    // la barre prend la couleur de l'aura du gardien
+    p.rect(x, y, Math.round(w * k), 4, s.boss.color);
+    p.rect(x, y, Math.round(w * k), 1, mix(s.boss.color, hex("#ffffff"), 0.5));
   }
   if (s.toast.t > 0) p.text(s.toast.text, W / 2, 34, TEXT, { font: "fr", align: "center", outline: INK, a: Math.min(1, s.toast.t / 0.4) });
   if (s.altarHint) {

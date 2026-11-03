@@ -46,10 +46,13 @@ const SCENARIOS = {
   citadelle: [["level", "citadelle"], ["at", 21, 13], [2.0, ""], ["at", 57, 13], [0.3, ""], [0.25, "right"], [0.4, "right jump"], [0.6, ""], [0.25, "right"], [0.4, "right jump"], [0.8, "right"]],
   // le Chevalier noir : il se réveille, se dresse, attaque ; le chevalier frappe
   boss: [["level", "citadelle"], ["at", 103, 13], [0.3, "right"], [2.4, ""], [0.05, "attack"], [0.1, ""], [0.05, "attack"], [0.1, ""], [0.05, "attack"], [1.4, ""], [0.6, "left"], [2.4, ""], [0.3, "right jump"], [0.05, "attack"], [1.5, ""]],
+  // un gardien : g:<niveau> pose le chevalier au bord de l'arène et le fait frapper au contact
   old: [[0.6, ""], [1.6, "right"], [0.5, "right jump"], [0.6, "right"], [0.4, "jump"], [0.8, ""], [1.2, "right"], [0.3, "right jump"], [0.9, "right"]],
 };
 // « special:<id> » : le chevalier connaît ce coup, a sa jauge pleine, et le lance face au slime de la colonne 31
-const name = process.argv[2] ?? "run", spec = name.startsWith("special:") ? name.slice(8) : null;
+const name0 = process.argv[2] ?? "run";
+if (name0.startsWith("g:")) SCENARIOS[name0] = [["level", name0.slice(2)], ["guardian"], [1.0, "right"], [2.4, ""], ...Array.from({ length: 10 }, (_, i) => [0.3, i % 2 ? "attack" : "right"]), [3, ""]];
+const name = name0, spec = name.startsWith("special:") ? name.slice(8) : null;
 const plan = spec
   ? [["load", { skills: { owned: ["boule-de-feu", "meteores", "chatiment", "soin", "bouclier", "ruee", "seisme"], equipped: spec } }], ["set", { ardor: 100, hp: 3 }], ["at", 27, 9], [0.1, "right"], [0.3, ""], [0.05, "special"], [2.2, ""]]
   : SCENARIOS[name];
@@ -59,6 +62,13 @@ const game = createGame(), shots = [];
 let t = 0, next = 0;
 for (const [d, held, ...at] of plan) {
   // ["at", x, y] : poser le chevalier à la colonne x, sur la ligne y (cases de 16 px)
+  // ["guardian"] : poser le chevalier au bord de l'arène du gardien
+  if (d === "guardian") {
+    const b = game.enemies.find((e) => e.boss);
+    b.measure(game.level);
+    Object.assign(game.hero, { x: b.arena.L + 12, y: b.home.y });
+    continue;
+  }
   // ["level", id] : entrer dans ce niveau
   if (d === "level") {
     game.load({ v: 2, progress: {}, current: held, where: "level" });

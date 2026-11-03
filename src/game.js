@@ -431,7 +431,7 @@ export function createGame() {
       const at = merchantHere();
       const gate = !altar && !enemies.some((e) => e.boss && e.active) && stage.gateNear(hero);
       const boss = enemies.find((e) => e.boss && e.active);
-      drawHud(frame, { boss: boss && { name: boss.name, hp: boss.hp, max: boss.max }, hp: hero.hp, maxHp: hero.maxHp, purse, toast, ardor: hero.ardor, equipped: skills.equipped, specials: [...skills.owned].filter((id) => node(id).ardor).length, altarHint: at && !altar ? [at.x, at.y] : null, gate });
+      drawHud(frame, { boss: boss && { name: boss.name, hp: boss.hp, max: boss.max, color: boss.aura }, hp: hero.hp, maxHp: hero.maxHp, purse, toast, ardor: hero.ardor, equipped: skills.equipped, specials: [...skills.owned].filter((id) => node(id).ardor).length, altarHint: at && !altar ? [at.x, at.y] : null, gate });
       if (altar) altar.draw(frame, game);
       drawTransition();
       return frame;
