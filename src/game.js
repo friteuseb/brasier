@@ -8,7 +8,7 @@ import * as burnAway from "pixelfx/fx/transitions/burn-away";
 import "./font.js";
 import { Embers } from "./embers.js";
 import { FIRST, place } from "./levels/index.js";
-import { WorldMap, drawSummary, Ending } from "./screens.js";
+import { WorldMap, drawSummary, Ending, drawHelp } from "./screens.js";
 import { WORLD } from "./levels/index.js";
 import { Stage, FLAME } from "./stage.js";
 import { Hero, HW, HH } from "./hero.js";
@@ -32,7 +32,7 @@ const foe = (ch, x, y, i, def) => (ch === "Z" ? new Guardian(GUARDIANS[def.guard
 export const W = 320, H = 180;
 const STEP = 1 / 120;
 const SAVE_VERSION = 2; // à augmenter quand le format change ; load() reprend la version 1
-const KEYS = ["left", "right", "up", "down", "jump", "attack", "special", "cycle", "confirm", "back"];
+const KEYS = ["left", "right", "up", "down", "jump", "attack", "special", "cycle", "confirm", "back", "help"];
 const ARDOR_HIT = 10, ARDOR_KILL = 20;
 
 export function createGame() {
@@ -53,6 +53,8 @@ export function createGame() {
   let fxs = [], projectiles = [], later = [], orbs = [], shieldFx = null;
   // mode : "play", "summary" (bilan) ou "map" (carte du royaume) ; trans : la transition d'écran en cours
   let mode = "play", altar = null, map = null, summaryT = 0, trans = null, prev = {}, ending = null;
+  // help : l'écran des touches, ouvert par-dessus le reste ({ t, splash }) ; splash, c'est l'accueil au lancement
+  let help = null;
   const cam = { x: 0, y: 0, look: 0 };
   let acc = 0, freeze = 0, shakeT = 0, shake0 = 1, amp = 0;
   // un gardien vaincu ne revient pas
@@ -197,11 +199,16 @@ export function createGame() {
 
   const game = {
     frame, hero, cam, skills,
+    // true sur un écran tactile : l'aide montre les boutons au lieu des touches
+    touch: false,
+    /** Ouvre l'écran des touches ; splash : l'accueil, au lancement du jeu. */
+    showHelp(splash = false) { help = { t: 0, splash }; },
+    get helpOpen() { return !!help; },
     get level() { return level; },
     get mode() { return mode; },
     /** La musique qui convient : celle du niveau, celle des gardiens pendant un combat, celle de la carte ailleurs. */
     get music() {
-      if (mode !== "play") return "mus-carte";
+      if (mode !== "play" || help?.splash) return "mus-carte";
       return enemies.some((e) => e.boss && e.active && e.hp > 0) ? "mus-boss" : `mus-${current}`;
     },
     // les événements de l'image (pour les sons) : { type, x, y, ... } ; main.js les lit après step()
@@ -210,7 +217,7 @@ export function createGame() {
     /** 0 loin de tout feu, 1 tout près d'un brasero allumé. */
     fireNear() {
       const k = stage.fireNear(hero);
-      return mode !== "play" ? 0 : altar ? k * 0.5 : k;
+      return mode !== "play" || help ? 0 : altar ? k * 0.5 : k;
     },
     get enemies() { return enemies; },
     get purse() { return purse; },
@@ -329,6 +336,21 @@ export function createGame() {
         if (trans.fx.done()) trans = null;
       }
       toast.t = Math.max(0, toast.t - dt);
+      // l'écran des touches met tout en pause ; l'accueil s'ouvre sur le jeu par une transition
+      if (help) {
+        help.t += dt;
+        const close = pressed.attack || pressed.confirm || pressed.jump || (!help.splash && (pressed.help || pressed.back));
+        if (help.t > 0.3 && !trans && close) {
+          if (help.splash) transition(() => { help = null; });
+          else { help = null; game.emit("close"); }
+        }
+        return;
+      }
+      if (pressed.help && mode === "play" && !altar) {
+        help = { t: 0, splash: false };
+        game.emit("open");
+        return;
+      }
       if (mode === "summary") {
         summaryT += dt;
         // après la Citadelle, la fin du jeu ; sinon la carte
@@ -406,6 +428,12 @@ export function createGame() {
     },
 
     draw() {
+      if (help?.splash) {
+        frame.ox = frame.oy = 0;
+        drawHelp(frame, { ...help, touch: game.touch });
+        drawTransition();
+        return frame;
+      }
       if (mode !== "play") {
         frame.ox = frame.oy = 0;
         if (mode === "summary") drawSummary(frame, stats, summaryT);
@@ -438,6 +466,7 @@ export function createGame() {
       const boss = enemies.find((e) => e.boss && e.active);
       drawHud(frame, { boss: boss && { name: boss.name, hp: boss.hp, max: boss.max, color: boss.aura }, hp: hero.hp, maxHp: hero.maxHp, purse, toast, ardor: hero.ardor, equipped: skills.equipped, specials: [...skills.owned].filter((id) => node(id).ardor).length, altarHint: at && !altar ? [at.x, at.y] : null, gate });
       if (altar) altar.draw(frame, game);
+      if (help) drawHelp(frame, { ...help, touch: game.touch });
       drawTransition();
       return frame;
     },

@@ -168,3 +168,57 @@ export class Ending {
     if (this.t > 6.5 && Math.floor(this.t * 2) % 2 === 0) p.text("X : LA CARTE DU ROYAUME", W / 2, H - 16, C.gold, { font: "frmini", align: "center" });
   }
 }
+
+// les touches, au clavier et sur écran tactile : [action, touches]
+const KEYS_PC = [
+  ["Courir", "< >  ou  Q / D"],
+  ["Sauter", "Espace, Z ou W"],
+  ["Frapper (3 coups)", "X ou J"],
+  ["Lancer le sort", "C ou K"],
+  ["Changer de sort", "V ou L"],
+  ["Échoppe du mage", "C devant lui"],
+  ["Son / musique", "M / N"],
+  ["Cette aide", "H"],
+];
+const KEYS_TOUCH = [
+  ["Courir", "< >  à gauche"],
+  ["Sauter", "SAUT"],
+  ["Frapper (3 coups)", "ÉPÉE"],
+  ["Lancer le sort", "SORT"],
+  ["Changer de sort", "petit bouton rond"],
+  ["Échoppe du mage", "SORT devant lui"],
+  ["Son", "SON, en haut"],
+  ["Cette aide", "?, en haut"],
+];
+
+/** L'écran d'accueil (splash) ou l'aide en pause, par-dessus le jeu : le rappel des touches. */
+export function drawHelp(frame, { t, splash, touch }) {
+  const { w: W, h: H, color, light } = frame;
+  if (splash) color.fill(C.night);
+  else for (let i = 0; i < color.length; i++) color[i] = mix(color[i], C.ink, 0.8);
+  light.fill(0);
+  const p = painterFor(frame);
+  p.place(frame.ox, frame.oy);
+  let y = 14;
+  if (splash) {
+    // un brasero qui danse au-dessus du titre
+    const f = Math.floor(t * 8) % 2;
+    p.glow(W / 2, 16, 40, C.flame, 0.45);
+    p.rect(W / 2 - 6, 18, 12, 3, C.path);
+    p.rect(W / 2 - 3, 12, 6, 6, C.flame);
+    p.rect(W / 2 - 1 - f, 8, 3, 5, C.hot);
+    p.text("BRASIER", W / 2, 26, C.gold, { font: "fr", align: "center", outline: C.ink });
+    p.text("RALLUMEZ LES GRANDS BRASIERS DU ROYAUME", W / 2, 40, C.dim, { font: "frmini", align: "center" });
+    y = 56;
+  } else {
+    p.text("LES TOUCHES", W / 2, y, C.gold, { font: "fr", align: "center", outline: C.ink });
+    y = 34;
+  }
+  for (const [action, keys] of touch ? KEYS_TOUCH : KEYS_PC) {
+    p.text(action.toUpperCase(), W / 2 - 8, y, C.dim, { font: "frmini", align: "right" });
+    p.text(keys.toUpperCase(), W / 2 + 8, y, C.text, { font: "frmini" });
+    y += 11;
+  }
+  const go = splash ? (touch ? "ÉPÉE : JOUER" : "X OU ENTRÉE : JOUER") : touch ? "ÉPÉE : REPRENDRE" : "X OU H : REPRENDRE";
+  if (t > 0.6 && Math.floor(t * 2) % 2 === 0) p.text(go, W / 2, H - 14, C.gold, { font: "frmini", align: "center" });
+}

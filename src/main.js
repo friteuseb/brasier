@@ -3,7 +3,7 @@
 import { composite } from "pixelfx";
 import { createGame, W, H } from "./game.js";
 import * as audio from "./audio.js";
-import { setupTouch } from "./touch.js";
+import { setupTouch, isTouch } from "./touch.js";
 
 const canvas = document.querySelector("canvas");
 const ctx = canvas.getContext("2d");
@@ -23,6 +23,7 @@ const KEYS = {
   down: ["ArrowDown", "KeyS", "Touch:down"],
   confirm: ["Enter"],
   back: ["Escape"],
+  help: ["KeyH", "Touch:help"],
 };
 // une touche tapée plus vite qu'une image compte quand même : on la garde jusqu'à la fin de l'image suivante
 const down = new Set(), tapped = new Set();
@@ -57,9 +58,12 @@ addEventListener("resize", fit);
 fit();
 
 const game = createGame();
+game.touch = isTouch();
 // la partie se garde dans le navigateur à chaque brasero ; un stockage refusé n'empêche pas de jouer
 const SAVE = "brasier.save";
 try { game.load(JSON.parse(localStorage.getItem(SAVE))); } catch {}
+// l'accueil et le rappel des touches, à chaque lancement
+game.showHelp(true);
 const store = () => { try { localStorage.setItem(SAVE, JSON.stringify(game.save())); } catch {} };
 game.onSave = store;
 addEventListener("visibilitychange", () => document.hidden && store());

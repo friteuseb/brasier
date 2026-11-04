@@ -1,6 +1,6 @@
 // Les commandes tactiles : des boutons HTML par-dessus le jeu, seulement sur un écran tactile. Chaque bouton tient une
 // « touche » virtuelle (Touch:left, Touch:jump...) que main.js traite comme une vraie touche. Plusieurs doigts à la fois.
-// À gauche : ◀ ▶ pour courir, ▲ ▼ pour les menus. À droite : saut, épée, sort, changer de sort. En haut : son, plein écran.
+// À gauche : ◀ ▶ pour courir, ▲ ▼ pour les menus. À droite : saut, épée, sort, changer de sort. En haut : aide, son, plein écran.
 
 const LEFT = [
   { code: "Touch:left", label: "◀", cls: "dir l" },
@@ -24,7 +24,7 @@ export function setupTouch({ press, release, onFirst, onMute }) {
   document.body.classList.add("touch");
   const pad = document.createElement("div");
   pad.id = "pad";
-  pad.innerHTML = '<div class="side left"></div><div class="side right"></div><div class="top"><button class="small mute">SON</button><button class="small full">⛶</button></div>';
+  pad.innerHTML = '<div class="side left"></div><div class="side right"></div><div class="top"><button class="small help">?</button><button class="small mute">SON</button><button class="small full">⛶</button></div>';
   document.body.append(pad);
   const add = (side, b) => {
     const el = document.createElement("button");
@@ -46,6 +46,11 @@ export function setupTouch({ press, release, onFirst, onMute }) {
   };
   LEFT.forEach((b) => add(".left", b));
   RIGHT.forEach((b) => add(".right", b));
+  // le bouton ? tient la touche d'aide, le temps d'une image
+  const help = pad.querySelector(".help");
+  help.addEventListener("pointerdown", (e) => { e.preventDefault(); onFirst(); press("Touch:help"); });
+  help.addEventListener("pointerup", () => release("Touch:help"));
+  help.addEventListener("pointercancel", () => release("Touch:help"));
   pad.querySelector(".mute").addEventListener("pointerdown", (e) => { e.preventDefault(); onFirst(); onMute(); });
   // le plein écran, et le paysage si le navigateur sait le verrouiller
   pad.querySelector(".full").addEventListener("pointerdown", async (e) => {

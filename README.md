@@ -19,6 +19,7 @@ les flammes, la météo. Aucune image.
 | Changer de sort | V ou L | ⟳ |
 | Couper le son | M | SON |
 | Couper la musique | N | |
+| Revoir les touches (pause) | H | ? |
 
 ## Le jeu
 
